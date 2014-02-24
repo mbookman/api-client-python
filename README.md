@@ -1,4 +1,4 @@
-python-client
+client-python
 ==============
 
 ###Getting started
