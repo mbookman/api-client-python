@@ -18,7 +18,10 @@ This file serves two main purposes
 - and it provides a simple set of apis to the javascript
 """
 
-import os, json, webapp2, jinja2
+import os
+import json
+import webapp2
+import jinja2
 from google.appengine.api.urlfetch_errors import DeadlineExceededError
 
 from oauth2client import appengine
@@ -43,18 +46,22 @@ decorator = appengine.oauth2decorator_from_clientsecrets(
       'https://www.googleapis.com/auth/devstorage.read_write'
     ])
 
+
 class ApiException(Exception):
   pass
+
 
 class BaseRequestHandler(webapp2.RequestHandler):
   def handle_exception(self, exception, debug_mode):
     if isinstance(exception, ApiException):
-      # ApiExceptions are expected, and will return nice error messages to the client
+      # ApiExceptions are expected, and will return nice error
+      # messages to the client
       self.response.write(exception.message)
       self.response.set_status(400)
     else:
       # All other exceptions are unexpected and should crash properly
-      return webapp2.RequestHandler.handle_exception(self, exception, debug_mode)
+      return webapp2.RequestHandler.handle_exception(
+        self, exception, debug_mode)
 
   def get_content(self, path, method='POST', body=None):
     http = decorator.http()
@@ -83,13 +90,15 @@ class BaseRequestHandler(webapp2.RequestHandler):
 
     self.response.write(json.dumps(content))
 
+
 class ReadsetSearchHandler(BaseRequestHandler):
 
   @decorator.oauth_aware
   def get(self):
     readset_id = self.request.get('readsetId')
     if not readset_id:
-      self.get_content("readsets/search", body={'datasetIds': ['383928317087']})
+      body = {'datasetIds': ['383928317087']}
+      self.get_content("readsets/search", body=body)
       return
 
     # Single readset response
@@ -123,6 +132,7 @@ class ReadsetSearchHandler(BaseRequestHandler):
     # TODO: Use the actual readset method
     # self.get_content("readsets/%s" % readset_id, method='GET')
 
+
 class ReadSearchHandler(BaseRequestHandler):
 
   @decorator.oauth_aware
@@ -137,6 +147,7 @@ class ReadSearchHandler(BaseRequestHandler):
       'pageToken': self.request.get('pageToken'),
      }
     self.get_content("reads/search", body=body)
+
 
 class MainHandler(webapp2.RequestHandler):
 
