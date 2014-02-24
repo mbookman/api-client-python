@@ -347,7 +347,7 @@ var readgraph = new function() {
 
     addField("Position", read.position);
     addField("Length", read.length);
-    addField("Mate position", read.mateSegmentPosition);
+    addField("Mate position", read.matePosition);
     addField("Mapping quality", read.mappingQuality);
     addField("Cigar", read.cigar);
 
@@ -371,11 +371,11 @@ var readgraph = new function() {
     $.each(reads, function(readi, read) {
       // Interpret the cigar
       // TODO: Compare the read against a reference rather than relying on the cigar
-      var bases = read.originalSequence.split('');
+      var bases = read.originalBases.split('');
       var matches = read.cigar.match(cigarMatcher);
       var baseIndex = 0;
 
-      read.id = read.qname + read.position + read.cigar;
+      read.id = read.name + read.position + read.cigar;
       read.readPieces = [];
       if (!read.cigar) {
         // Hack for unmapped reads
@@ -419,7 +419,7 @@ var readgraph = new function() {
           case '=':
             // Matches and insertions get displayed
             for (var j = 0; j < baseCount; j++) {
-              addLetter(baseType, bases[baseIndex], read.qual.charCodeAt(baseIndex) - 33);
+              addLetter(baseType, bases[baseIndex], read.baseQuality.charCodeAt(baseIndex) - 33);
               baseIndex++;
             }
             break;
