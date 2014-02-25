@@ -51,7 +51,8 @@ var readgraph = new function() {
 
   var handleZoom = function() {
     var tx = zoom.translate()[0];
-    tx = Math.max(tx, (1 - zoom.scale()) * width); // TODO: This isn't strict enough
+    // TODO: This isn't strict enough
+    tx = Math.max(tx, (1 - zoom.scale()) * width);
     tx = Math.min(tx, 0);
     zoom.translate([tx, 0]);
     svg.select(".axis").call(xAxis);
@@ -97,7 +98,8 @@ var readgraph = new function() {
         .attr('class', 'axis');
 
     // Unsupported message
-    unsupportedMessage = addText(svg, 'This zoom level is coming soon!', width/2, height/4);
+    unsupportedMessage = addText(svg, 'This zoom level is coming soon!',
+        width/2, height/4);
 
     // Hover line
     var hoverline = svg.append("line")
@@ -130,7 +132,8 @@ var readgraph = new function() {
     // Zooming
     var changeZoomLevel = function(levelChange) {
       var newZoom = zoom.scale();
-      var middleX = x.invert(width / 2); // Keep the graph centered on the middle position
+      // Keep the graph centered on the middle position
+      var middleX = x.invert(width / 2);
 
       if (levelChange > 0) {
         newZoom = zoom.scale() * zoomLevelChange;
@@ -140,7 +143,6 @@ var readgraph = new function() {
       newZoom = Math.max(1, newZoom);
       newZoom = Math.min(maxZoom, newZoom);
       zoom.scale(newZoom);
-      console.log("switched to zoom: " + newZoom + " and scale " + getScaleLevel());
 
       handleZoom();
       moveTosequencePosition(middleX);
@@ -148,6 +150,11 @@ var readgraph = new function() {
 
     zoom = d3.behavior.zoom().size([width, height]).on("zoom", handleZoom);
     svg.call(zoom);
+
+    // Zoom background
+    zoomGroup.append('rect')
+        .attr('x', 23).attr('y', 35)
+        .attr('width', 66).attr('height', 170);
 
     addImage(zoomGroup, 'zoom-bar.png', 10, 201, 7, 10);
     addImage(zoomGroup, 'zoom-level.png', 22, 15, 2, 183, null, 'zoomLevel');
@@ -184,7 +191,8 @@ var readgraph = new function() {
     moveTosequencePosition(position);
   };
 
-  var addImage = function(parent, name, width, height, x, y, opt_handler, opt_class) {
+  var addImage = function(parent, name, width, height, x, y,
+      opt_handler, opt_class) {
     return parent.append('image').attr('xlink:href', '/static/img/' + name)
         .attr('width', width).attr('height', height)
         .attr('x', x).attr('y', y)
@@ -229,10 +237,15 @@ var readgraph = new function() {
         canonicalName = number || canonicalName;
       }
 
-      var sequenceDiv = $('<div/>', {'class': 'sequence', id: 'sequence-' + sequence.name}).appendTo(sequencesDiv);
-      $('<img>', {'class': 'pull-left', src: '/static/img/chr' + canonicalName + '.png'}).appendTo(sequenceDiv);
-      $('<div>', {'class': 'title'}).text("Chromosome " + canonicalName).appendTo(sequenceDiv);
-      $('<div>', {'class': 'summary'}).text(xFormat(sequence.sequenceLength) + " bases").appendTo(sequenceDiv);
+      var imageUrl = '/static/img/chr' + canonicalName + '.png';
+      var title = "Chromosome " + canonicalName;
+      var summary = xFormat(sequence.sequenceLength) + " bases";
+
+      var sequenceDiv = $('<div/>', {'class': 'sequence',
+        id: 'sequence-' + sequence.name}).appendTo(sequencesDiv);
+      $('<img>', {'class': 'pull-left', src: imageUrl}).appendTo(sequenceDiv);
+      $('<div>', {'class': 'title'}).text(title).appendTo(sequenceDiv);
+      $('<div>', {'class': 'summary'}).text(summary).appendTo(sequenceDiv);
 
       sequenceDiv.click(function() {
         selectSequence(sequence);
@@ -296,7 +309,8 @@ var readgraph = new function() {
 
   var outlinePoints = function(read, i) {
     var yTracksLength = y.domain()[0];
-    var barHeight = Math.min(30, Math.max(2, (height - margin*3)/ yTracksLength - 5));
+    var barHeight = Math.min(30, Math.max(2,
+        (height - margin * 3) / yTracksLength - 5));
 
     var pointWidth = 10;
     var startX = Math.max(margin, x(read.position));
@@ -370,7 +384,7 @@ var readgraph = new function() {
     var yTracks = [];
     $.each(reads, function(readi, read) {
       // Interpret the cigar
-      // TODO: Compare the read against a reference rather than relying on the cigar
+      // TODO: Compare the read against a reference as well
       var bases = read.originalBases.split('');
       var matches = read.cigar.match(cigarMatcher);
       var baseIndex = 0;
@@ -419,7 +433,8 @@ var readgraph = new function() {
           case '=':
             // Matches and insertions get displayed
             for (var j = 0; j < baseCount; j++) {
-              addLetter(baseType, bases[baseIndex], read.baseQuality.charCodeAt(baseIndex) - 33);
+              addLetter(baseType, bases[baseIndex],
+                  read.baseQuality.charCodeAt(baseIndex) - 33);
               baseIndex++;
             }
             break;
@@ -428,7 +443,8 @@ var readgraph = new function() {
 
       read.length = read.readPieces.length;
       read.end = read.position + read.length;
-      read.reverse = (read.flags >> 4) % 2 == 1; // The 5th flag bit indicates this read is reversed
+      // The 5th flag bit indicates this read is reversed
+      read.reverse = (read.flags >> 4) % 2 == 1;
       read.index = readi;
 
       for (var i = 0; i < yTracks.length; i++) {
@@ -451,7 +467,8 @@ var readgraph = new function() {
       return;
     }
 
-    var reads = readGroup.selectAll(".read").data(reads, function(read){return read.id;});
+    var reads = readGroup.selectAll(".read").data(reads,
+        function(read){ return read.id; });
 
     reads.enter().append("g")
         .attr('class', 'read')
@@ -490,7 +507,8 @@ var readgraph = new function() {
   };
 
   var lastQueryParams = null;
-  var queryApi = function(sequenceStart, sequenceEnd, type, handler) { // TODO: Make this cleaner
+  // TODO: Make this cleaner
+  var queryApi = function(sequenceStart, sequenceEnd, type, handler) {
     var queryParams = makeQueryParams(sequenceStart, sequenceEnd, type);
 
     if (lastQueryParams
@@ -525,7 +543,8 @@ var readgraph = new function() {
           }
         })
         .fail(function(xhr) {
-          showError("Sorry, the api request failed for some reason. Better error handling to come! (" + xhr.responseText + ")");
+          showError("Sorry, the api request failed for some reason. " +
+              "Better error handling to come! (" + xhr.responseText + ")");
         })
         .always(function() {
           spinner.style('display', 'none');

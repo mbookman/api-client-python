@@ -86,6 +86,10 @@ svg {
   fill: #999;
 }
 
+.zoomGroup rect {
+  fill: white;
+}
+
 .read .outline {
   stroke: gray;
   fill: white;
