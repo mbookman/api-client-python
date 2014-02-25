@@ -18,19 +18,24 @@ This file serves two main purposes
 - and it provides a simple set of apis to the javascript
 """
 
-import os
-import json
-import webapp2
+import httplib2
 import jinja2
-from google.appengine.api.urlfetch_errors import DeadlineExceededError
+import json
+import logging
+import os
+import socket
+import webapp2
 
 from oauth2client import appengine
 from google.appengine.api import users
 from google.appengine.api import urlfetch
+from google.appengine.api import memcache
 
 
-# Increase timeout to the maximum for all requests
+# Increase timeout to the maximum for all requests and use caching
 urlfetch.set_default_fetch_deadline(60)
+socket.setdefaulttimeout(60)
+http = httplib2.Http(cache=memcache)
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -59,23 +64,20 @@ class BaseRequestHandler(webapp2.RequestHandler):
       self.response.write(exception.message)
       self.response.set_status(400)
     else:
-      # All other exceptions are unexpected and should crash properly
-      return webapp2.RequestHandler.handle_exception(
-        self, exception, debug_mode)
+      # All other exceptions are unexpected and should be logged
+      logging.exception('Unexpected exception')
+      self.response.write('Unexpected internal exception')
+      self.response.set_status(500)
 
   def get_content(self, path, method='POST', body=None):
     http = decorator.http()
-    try:
-      response, content = http.request(
-        uri="https://www.googleapis.com/genomics/v1beta/%s" % path,
-        method=method, body=json.dumps(body) if body else None,
-        headers={'Content-Type': 'application/json; charset=UTF-8'})
-    except DeadlineExceededError:
-      raise ApiException('API fetch timed out')
+    response, content = http.request(
+      uri="https://www.googleapis.com/genomics/v1beta/%s" % path,
+      method=method, body=json.dumps(body) if body else None,
+      headers={'Content-Type': 'application/json; charset=UTF-8'})
 
-    # TODO: Delete debug code
-    print(response)
-    print(content)
+    logging.debug("api response %s" % response)
+    logging.debug("api content %s" % content)
 
     if response.status == 404:
       raise ApiException('API not found')
