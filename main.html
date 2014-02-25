@@ -35,6 +35,7 @@ limitations under the License.
   <div class="collapse navbar-collapse">
     <ul class="nav navbar-nav" id="mainNav">
       <li class="active"><a href="#" onclick="toggleUi('reads', this)">Browser</a></li>
+      <li><a href="#" data-toggle="modal" data-target="#about">About</a></li>
     </ul>
 
     <ul class="nav navbar-nav navbar-right">
@@ -49,6 +50,40 @@ limitations under the License.
 </nav>
 
 <!-- Modals -->
+<div class="modal" id="about">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">About GABrowse</h4>
+      </div>
+      <div class="modal-body">
+        <p class="lead">GABrowse is a sample application designed to demonstrate the capabilities of the
+        <a href="https://developers.google.com/genomics">Google Genomics API</a>.</p>
+
+        <p>Currently, you can view a single set of Reads from the 1000 genomes project.</p>
+
+        <p>
+          <ul>
+            <li>Use the button on the left to select a Readset.</li>
+            <li>Once loaded, choose a chromosome and zoom or drag the main graph to
+              explore <a href="http://en.wikipedia.org/wiki/DNA_sequence">Read data.</a></li>
+            <li>Individual <a href="http://en.wikipedia.org/wiki/Nucleobase">bases</a>
+              will appear once you zoom in far enough.</li>
+          </ul>
+        </p>
+
+        <p>The code for this application is in
+        <a href="https://github.com/GoogleCloudPlatform/genomics-tools">GitHub</a>
+        and is a work in progress. Patches welcome!</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="readsetSearch">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -101,6 +136,7 @@ limitations under the License.
 </div>
 
 <script>
+  $("#about").modal('show');
   // TODO: Save current readsets in a cookie
   searchReadsets();
 </script>
