@@ -221,6 +221,10 @@ var readgraph = new function() {
 
     $('#jumpDiv').show();
     handleZoom();
+
+    // Zoom into a given position because the overall zoom isn't supported
+    var initialPosition = currentSequence.sequenceLength / 2;
+    readgraph.jumpGraph(initialPosition.toString());
   };
 
   var updateSequences = function() {
@@ -349,7 +353,7 @@ var readgraph = new function() {
   var showRead = function(read, i) {
     readDiv.empty().show();
 
-    $("<h4/>").text("Read: " + read.qname).appendTo(readDiv);
+    $("<h4/>").text("Read: " + read.name).appendTo(readDiv);
     var dl = $("<dl/>").addClass("dl").appendTo(readDiv);
 
     var addField = function(title, field) {

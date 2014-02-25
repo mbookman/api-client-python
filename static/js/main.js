@@ -93,3 +93,11 @@ function searchReadsets(button) {
       });
   return false;
 }
+
+// Show the about popup when the page loads
+// And prep the initial readset search
+$(document).ready(function() {
+  $("#about").modal('show');
+  // TODO: Save current readsets in a cookie
+  searchReadsets();
+});

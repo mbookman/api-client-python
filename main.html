@@ -92,7 +92,9 @@ limitations under the License.
         <h4 class="modal-title">Select readsets to view</h4>
       </div>
       <div class="modal-body">
-        <div id="readsetResults" class="list-group"></div>
+        <div id="readsetResults" class="list-group">
+          <img src="static/img/spinner.gif"/>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
@@ -134,11 +136,5 @@ limitations under the License.
     <svg id="graph"></svg>
   </div>
 </div>
-
-<script>
-  $("#about").modal('show');
-  // TODO: Save current readsets in a cookie
-  searchReadsets();
-</script>
 </body>
 </html>
