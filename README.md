@@ -37,9 +37,9 @@ The python client also depends on several external libraries:
 
 * <a href="https://github.com/jcgregorio/httplib2">httplib2</a> is required by the oauth library
 
-* <a href="d3js.org">D3</a> is a javascript library used to make rich visualizations
+* <a href="http://d3js.org">D3</a> is a javascript library used to make rich visualizations
 
-* <a href="underscorejs.org">Underscore.js</a> is a javascript library that provides a variety of utilities
+* <a href="http://underscorejs.org">Underscore.js</a> is a javascript library that provides a variety of utilities
 
 * <a href="http://getbootstrap.com">Bootstrap</a> supplies a great set of default css, icons, and js helpers
 
