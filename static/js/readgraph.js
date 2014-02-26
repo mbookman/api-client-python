@@ -261,12 +261,15 @@ var readgraph = new function() {
     var scaleLevel = getScaleLevel();
     var summaryView = scaleLevel < 2;
     var coverageView = scaleLevel == 2 || scaleLevel == 3;
-    var readView = scaleLevel > 3;
+    var readView = scaleLevel == 4 || scaleLevel == 5;
     var baseView = scaleLevel > 5;
 
     var reads = readGroup.selectAll(".read");
+    var letters = readGroup.selectAll(".letter");
+
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(reads, readView);
+    toggleVisibility(letters, baseView);
 
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
@@ -277,25 +280,21 @@ var readgraph = new function() {
 
       reads.selectAll('.outline')
           .attr("points", outlinePoints);
-
-      if (!baseView) {
-        reads.selectAll('.letter').style('display', 'none');
-      } else {
-        reads.selectAll('.letter')
-            .style('display', function(data, i) {
-              if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
-                return 'none';
-              } else {
-                return 'block';
-              }
-            })
-            .attr("x", function(data, i) {
-              return x(data.rx) + textWidth;
-            })
-            .attr("y", function(data, i) {
-              return y(data.ry) + textHeight/2;
-            });
-      }
+    } else if (baseView) {
+      reads.selectAll('.letter')
+          .style('display', function(data, i) {
+            if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
+              return 'none';
+            } else {
+              return 'block';
+            }
+          })
+          .attr("x", function(data, i) {
+            return x(data.rx) + textWidth;
+          })
+          .attr("y", function(data, i) {
+            return y(data.ry) + textHeight/2;
+          });
     }
   };
 
