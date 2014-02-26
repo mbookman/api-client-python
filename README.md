@@ -28,7 +28,7 @@ Then, run this app engine app locally and visit http://localhost:8080 to browse 
 
 * **static/js/main.js** provides some js utility functions, and calls into readgraph.js
 
-* **static/js/readgraph.js** handles the visualization of reads. It contains the most complex code and uses <a href="d3js.org">d3.js</a> to display actual Read data.
+* **static/js/readgraph.js** handles the visualization of reads. It contains the most complex code and uses <a href="http://d3js.org">d3.js</a> to display actual Read data.
 
 
 The python client also depends on several external libraries:
