@@ -265,7 +265,7 @@ var readgraph = new function() {
     var baseView = scaleLevel > 5;
 
     var reads = readGroup.selectAll(".read");
-    var letters = readGroup.selectAll(".letter");
+    var letters = reads.selectAll(".letter");
 
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(reads, readView);
@@ -281,8 +281,7 @@ var readgraph = new function() {
       reads.selectAll('.outline')
           .attr("points", outlinePoints);
     } else if (baseView) {
-      reads.selectAll('.letter')
-          .style('display', function(data, i) {
+      letters.style('display', function(data, i) {
             if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
               return 'none';
             } else {
@@ -543,14 +542,14 @@ var readgraph = new function() {
           if (res.nextPageToken) {
             queryParams['pageToken'] = res.nextPageToken;
             callXhr(url, queryParams, handler, reads);
+          } else {
+            spinner.style('display', 'none');
           }
         })
         .fail(function(xhr) {
+          spinner.style('display', 'none');
           showError("Sorry, the api request failed for some reason. " +
               "Better error handling to come! (" + xhr.responseText + ")");
-        })
-        .always(function() {
-          spinner.style('display', 'none');
         });
   };
 
