@@ -99,7 +99,7 @@ class ReadsetSearchHandler(BaseRequestHandler):
   def get(self):
     readset_id = self.request.get('readsetId')
     if not readset_id:
-      body = {'datasetIds': ['383928317087']}
+      body = {'datasetIds': ['376902546192']}
       self.get_content("readsets/search?fields=readsets(id,name)", body=body)
       return
 
