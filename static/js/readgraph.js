@@ -546,10 +546,8 @@ var readgraph = new function() {
             spinner.style('display', 'none');
           }
         })
-        .fail(function(xhr) {
+        .fail(function() {
           spinner.style('display', 'none');
-          showError("Sorry, the api request failed for some reason. " +
-              "Better error handling to come! (" + xhr.responseText + ")");
         });
   };
 

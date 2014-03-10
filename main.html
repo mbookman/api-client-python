@@ -36,6 +36,7 @@ limitations under the License.
     <ul class="nav navbar-nav" id="mainNav">
       <li class="active"><a href="#" onclick="toggleUi('reads', this)">Browser</a></li>
       <li><a href="#" data-toggle="modal" data-target="#about">About</a></li>
+      <li><a href="#" data-toggle="modal" data-target="#settings">Settings</a></li>
     </ul>
 
     <ul class="nav navbar-nav navbar-right">
@@ -79,6 +80,32 @@ limitations under the License.
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="settings">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">Settings</h4>
+      </div>
+      <div class="modal-body">
+        <form class="form">
+          <div class="form-group">
+            <label for="backend">Data provider</label>
+            <select class="form-control" id="backend">
+              <option value="GOOGLE">Google</option>
+              <option value="NCBI">NCBI</option>
+              <option value="LOCAL">A locally running server</option>
+            </select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="return saveSettings()" data-dismiss="modal">Save</button>
       </div>
     </div>
   </div>

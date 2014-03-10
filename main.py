@@ -51,6 +51,12 @@ decorator = appengine.oauth2decorator_from_clientsecrets(
       'https://www.googleapis.com/auth/devstorage.read_write'
     ])
 
+SUPPORTED_BACKENDS = {
+  'GOOGLE' : 'https://www.googleapis.com/genomics/v1beta',
+  'NCBI' : 'http://trace.ncbi.nlm.nih.gov',
+  'LOCAL' : 'http://localhost:5000',
+}
+
 
 class ApiException(Exception):
   pass
@@ -69,26 +75,30 @@ class BaseRequestHandler(webapp2.RequestHandler):
       self.response.write('Unexpected internal exception')
       self.response.set_status(500)
 
+  def get_base_api_url(self):
+    backend = self.request.get('backend') or 'GOOGLE'
+    return SUPPORTED_BACKENDS[backend]
+
   def get_content(self, path, method='POST', body=None):
     http = decorator.http()
     response, content = http.request(
-      uri="https://www.googleapis.com/genomics/v1beta/%s" % path,
+      uri="%s/%s" % (self.get_base_api_url(), path),
       method=method, body=json.dumps(body) if body else None,
       headers={'Content-Type': 'application/json; charset=UTF-8'})
 
-    logging.debug("api response %s" % response)
-    logging.debug("api content %s" % content)
+    try:
+      content = json.loads(content)
+    except ValueError:
+      logging.error("non-json api content %s" % content)
+      raise ApiException('The API returned invalid JSON')
 
-    if response.status == 404:
-      raise ApiException('API not found')
-    elif response.status == 400:
-      raise ApiException('API request malformed')
-    elif response.status != 200:
-      raise ApiException('Something went wrong with the API call!')
-
-    content = json.loads(content)
-    if 'error' in content:
-      raise ApiException(content['error']['message'])
+    if response.status >= 300:
+      logging.error("error api response %s" % response)
+      logging.error("error api content %s" % content)
+      if 'error' in content:
+        raise ApiException(content['error']['message'])
+      else:
+        raise ApiException('Something went wrong with the API call!')
 
     self.response.write(json.dumps(content))
 
@@ -139,10 +149,8 @@ class ReadSearchHandler(BaseRequestHandler):
 
   @decorator.oauth_aware
   def get(self):
-    readset_ids = [id for id in self.request.get('readsetIds').split(',')]
-
     body = {
-      'readsetIds': readset_ids,
+      'readsetIds': self.request.get('readsetIds').split(','),
       'sequenceName': self.request.get('sequenceName'),
       'sequenceStart': max(0, int(self.request.get('sequenceStart'))),
       'sequenceEnd': int(self.request.get('sequenceEnd')),
@@ -162,6 +170,7 @@ class MainHandler(webapp2.RequestHandler):
         'logout_url': users.create_logout_url('/')
       }))
     else:
+      # TODO: What kind of access do the non-google backends need?
       template = JINJA_ENVIRONMENT.get_template('grantaccess.html')
       self.response.write(template.render({
         'url': decorator.authorize_url()

@@ -46,6 +46,14 @@ function closeButton() {
   return $('<button type="button" class="close" aria-hidden="true">&times;</button>');
 }
 
+function saveSettings() {
+  $.ajaxSetup({
+    data: {backend: $('#backend').val()}
+  });
+  searchReadsets();
+  return false;
+}
+
 function removeReadset(name, id) {
   readgraph.removeReadset(id);
 }
@@ -69,8 +77,7 @@ function addReadset(name, id) {
   $.getJSON('/api/readsets', {'readsetId': id})
       .done(function(res) {
         readgraph.addReadset(id, res);
-      }).error(function() {
-        showError('The readset ' + name + ' could not be loaded');
+      }).fail(function() {
         li.remove();
       });
 }
@@ -80,9 +87,9 @@ function searchReadsets(button) {
     button = $(button);
     button.button('loading');
   }
+  var div = $('#readsetResults').empty();
   $.getJSON('/api/readsets')
       .done(function(res) {
-        var div = $('#readsetResults').empty();
         $.each(res.readsets, function(i, data) {
           $('<a/>', {'href': '#', 'class': 'list-group-item'}).text(data.name).appendTo(div).click(function() {
             addReadset(data.name, data.id);
@@ -98,6 +105,12 @@ function searchReadsets(button) {
 // And prep the initial readset search
 $(document).ready(function() {
   $("#about").modal('show');
+
+  $(document).ajaxError(function(e, xhr) {
+    showError("Sorry, the api request failed for some reason. " +
+        "(" + xhr.responseText + ")");
+  });
+
   // TODO: Save current readsets in a cookie
   searchReadsets();
 });
