@@ -75,9 +75,11 @@ class BaseRequestHandler(webapp2.RequestHandler):
       self.response.write('Unexpected internal exception')
       self.response.set_status(500)
 
+  def get_backend(self):
+    return self.request.get('backend') or 'GOOGLE'
+
   def get_base_api_url(self):
-    backend = self.request.get('backend') or 'GOOGLE'
-    return SUPPORTED_BACKENDS[backend]
+    return SUPPORTED_BACKENDS[self.get_backend()]
 
   def get_content(self, path, method='POST', body=None):
     http = decorator.http()
@@ -109,7 +111,12 @@ class ReadsetSearchHandler(BaseRequestHandler):
   def get(self):
     readset_id = self.request.get('readsetId')
     if not readset_id:
-      body = {'datasetIds': ['376902546192']}
+      backend = self.get_backend()
+      if backend == 'GOOGLE':
+        # Temporary requirement
+        body = {'datasetIds': ['376902546192']}
+      else:
+        body = {'datasetIds' : []}
       self.get_content("readsets/search?fields=readsets(id,name)", body=body)
       return
 
@@ -150,6 +157,7 @@ class ReadSearchHandler(BaseRequestHandler):
   @decorator.oauth_aware
   def get(self):
     body = {
+      'datasetIds': [],
       'readsetIds': self.request.get('readsetIds').split(','),
       'sequenceName': self.request.get('sequenceName'),
       'sequenceStart': max(0, int(self.request.get('sequenceStart'))),
