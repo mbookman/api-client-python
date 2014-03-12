@@ -51,14 +51,13 @@ function getBackend() {
 }
 
 function getBackendName() {
-  return {'GOOGLE': 'Google', 'NCBI' : 'NCBI', 'LOCAL': 'Local'}[getBackend()];
+  return $('#backend option:selected').text();
 }
 
 function saveSettings() {
-  $.ajaxSetup({
-    data: {backend: getBackend()}
+  $.post('/settings', {backend: getBackend()}).done(function() {
+    searchReadsets();
   });
-  searchReadsets();
   return false;
 }
 

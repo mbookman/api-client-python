@@ -97,9 +97,11 @@ limitations under the License.
           <div class="form-group">
             <label for="backend">Data provider</label>
             <select class="form-control" id="backend">
-              <option value="GOOGLE">Google</option>
-              <option value="NCBI">NCBI</option>
-              <option value="LOCAL">A locally running server</option>
+              {% for backend, data in backends.iteritems() %}
+                <option {% if user_backend == backend %} selected="selected" {% endif %} value="{{ backend }}">
+                     {{ data.name }}
+                </option>
+              {% endfor %}
             </select>
           </div>
         </form>

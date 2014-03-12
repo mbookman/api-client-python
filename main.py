@@ -30,6 +30,7 @@ from oauth2client import appengine
 from google.appengine.api import users
 from google.appengine.api import urlfetch
 from google.appengine.api import memcache
+from google.appengine.ext import db
 
 
 # Increase timeout to the maximum for all requests and use caching
@@ -52,16 +53,36 @@ decorator = appengine.oauth2decorator_from_clientsecrets(
     ])
 
 SUPPORTED_BACKENDS = {
-  'GOOGLE' : 'https://www.googleapis.com/genomics/v1beta',
-  'NCBI' : 'http://trace.ncbi.nlm.nih.gov',
-  'LOCAL' : 'http://localhost:5000',
+  'GOOGLE' : {'name' : 'Google', 'url': 'https://www.googleapis.com/genomics/v1beta'},
+  'NCBI' : {'name' : 'NCBI', 'url': 'http://trace.ncbi.nlm.nih.gov'},
+  'LOCAL' : {'name' : 'Local', 'url': 'http://localhost:5000'},
 }
-
 
 class ApiException(Exception):
   pass
 
 
+# Basic user settings
+class UserSettings(db.Model):
+  backend = db.StringProperty()
+
+def get_user_settings():
+  user = users.get_current_user()
+  u = UserSettings.get_by_key_name(key_names=user.email(),
+                                   read_policy=db.STRONG_CONSISTENCY)
+  if not u:
+    u = UserSettings(key_name=user.email())
+    u.backend = 'GOOGLE'
+    u.put()
+  return u
+
+def update_user_settings(backend):
+  u = get_user_settings()
+  u.backend = backend
+  u.put()
+
+
+# Request handlers
 class BaseRequestHandler(webapp2.RequestHandler):
   def handle_exception(self, exception, debug_mode):
     if isinstance(exception, ApiException):
@@ -76,10 +97,10 @@ class BaseRequestHandler(webapp2.RequestHandler):
       self.response.set_status(500)
 
   def get_backend(self):
-    return self.request.get('backend') or 'GOOGLE'
+    return get_user_settings().backend
 
   def get_base_api_url(self):
-    return SUPPORTED_BACKENDS[self.get_backend()]
+    return SUPPORTED_BACKENDS[self.get_backend()]['url']
 
   def get_content(self, path, method='POST', body=None):
     http = decorator.http()
@@ -167,6 +188,10 @@ class ReadSearchHandler(BaseRequestHandler):
     self.get_content("reads/search", body=body)
 
 
+class SettingsHandler(webapp2.RequestHandler):
+  def post(self):
+    update_user_settings(self.request.get('backend'))
+
 class MainHandler(webapp2.RequestHandler):
 
   @decorator.oauth_aware
@@ -175,7 +200,9 @@ class MainHandler(webapp2.RequestHandler):
       template = JINJA_ENVIRONMENT.get_template('main.html')
       self.response.write(template.render({
         'username': users.User().nickname(),
-        'logout_url': users.create_logout_url('/')
+        'logout_url': users.create_logout_url('/'),
+        'backends': SUPPORTED_BACKENDS,
+        'user_backend': get_user_settings().backend,
       }))
     else:
       # TODO: What kind of access do the non-google backends need?
@@ -187,6 +214,7 @@ class MainHandler(webapp2.RequestHandler):
 app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
+     ('/settings', SettingsHandler),
      ('/api/reads', ReadSearchHandler),
      ('/api/readsets', ReadsetSearchHandler),
      (decorator.callback_path, decorator.callback_handler()),

@@ -571,6 +571,7 @@ var readgraph = new function() {
       sequences = sequenceData;
       updateSequences();
       $('#chooseReadsetMessage').hide();
+      $('#jumpDiv').hide();
       clearReads();
     }
   };
