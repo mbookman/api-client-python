@@ -382,15 +382,20 @@ var readgraph = new function() {
     }
   };
 
+  var clearReads = function() {
+    if (readGroup) {
+      readGroup.selectAll('.read').remove();
+    }
+    if (readDiv) {
+      readDiv.hide();
+    }
+  };
+
   var setReads = function(reads) {
     var yTracks = [];
     $.each(reads, function(readi, read) {
       // Interpret the cigar
       // TODO: Compare the read against a reference as well
-      var bases = read.originalBases.split('');
-      var matches = read.cigar.match(cigarMatcher);
-      var baseIndex = 0;
-
       read.id = read.name + read.position + read.cigar;
       read.readPieces = [];
       if (!read.cigar) {
@@ -408,6 +413,10 @@ var readgraph = new function() {
           'cigarType': type
         });
       };
+
+      var bases = read.originalBases.split('');
+      var baseIndex = 0;
+      var matches = read.cigar.match(cigarMatcher);
 
       for (var m = 0; m < matches.length; m++) {
         var match = matches[m];
@@ -562,6 +571,7 @@ var readgraph = new function() {
       sequences = sequenceData;
       updateSequences();
       $('#chooseReadsetMessage').hide();
+      clearReads();
     }
   };
 
