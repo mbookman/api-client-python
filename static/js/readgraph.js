@@ -64,7 +64,7 @@ var readgraph = new function() {
 
   var moveTosequencePosition = function(position) {
     position = Math.max(0, position);
-    position = Math.min(currentSequence.sequenceLength, position);
+    position = Math.min(currentSequence['length'], position);
 
     var newX = x(position);
     newX = zoom.translate()[0] - newX + width / 2;
@@ -218,8 +218,8 @@ var readgraph = new function() {
     }
 
     // Axis and zoom
-    x.domain([0, sequence.sequenceLength]);
-    maxZoom = Math.ceil(Math.max(1, sequence.sequenceLength / minRange));
+    x.domain([0, sequence['length']]);
+    maxZoom = Math.ceil(Math.max(1, sequence['length'] / minRange));
     zoomLevelChange = Math.pow(maxZoom, 1/6);
     zoom.x(x).scaleExtent([1, maxZoom]).size([width, height]);
 
@@ -227,7 +227,7 @@ var readgraph = new function() {
     handleZoom();
 
     // Zoom into a given position because the overall zoom isn't supported
-    var initialPosition = currentSequence.sequenceLength / 2;
+    var initialPosition = currentSequence['length'] / 2;
     readgraph.jumpGraph(initialPosition.toString());
   };
 
@@ -249,7 +249,7 @@ var readgraph = new function() {
         imageUrl = makeImageUrl('chrY');
       } else {
         var number = sequence.name.replace(/\D/g,'');
-        if (number < 23) {
+        if (!!number && number < 23) {
           title = 'Chromosome ' + number;
           imageUrl = makeImageUrl('chr' + number);
         } else {
@@ -257,7 +257,7 @@ var readgraph = new function() {
         }
       }
 
-      var summary = xFormat(sequence.sequenceLength) + " bases";
+      var summary = xFormat(sequence['length']) + " bases";
 
       var sequenceDiv = $('<div/>', {'class': 'sequence',
         id: sequenceId(sequence.name)}).appendTo(sequencesDiv);

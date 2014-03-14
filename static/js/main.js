@@ -83,7 +83,7 @@ function addReadset(name, id) {
 
   $.getJSON('/api/readsets', {'readsetId': id})
       .done(function(res) {
-        readgraph.addReadset(id, res);
+        readgraph.addReadset(id, res.fileData[0].refSequences);
       }).fail(function() {
         li.remove();
       });
