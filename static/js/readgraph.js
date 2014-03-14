@@ -204,10 +204,14 @@ var readgraph = new function() {
     return parent.append('text').text(name).attr('x', x).attr('y', y);
   };
 
+  var sequenceId = function(name) {
+    return 'sequence-' + name.replace(/[\|\.]/g, '');
+  };
+
   var selectSequence = function(sequence) {
     currentSequence = sequence;
     $('.sequence').removeClass('active');
-    $('#sequence-' + sequence.name).addClass('active');
+    $('#' + sequenceId(sequence.name)).addClass('active');
     $('#graph').show();
     if (!setupRun) {
       setup();
@@ -227,27 +231,39 @@ var readgraph = new function() {
     readgraph.jumpGraph(initialPosition.toString());
   };
 
+  var makeImageUrl = function(name) {
+    return '/static/img/' + name + '.png';
+  };
+
   var updateSequences = function() {
     var sequencesDiv = $("#sequences").empty();
 
     $.each(sequences, function(i, sequence) {
-      var canonicalName = sequence.name;
+      var title, imageUrl;
+
       if (sequence.name.indexOf('X') != -1) {
-        canonicalName = 'X';
+        title = 'Chromosome X';
+        imageUrl = makeImageUrl('chrX');
       } else if (sequence.name.indexOf('Y') != -1) {
-        canonicalName = 'Y';
+        title = 'Chromosome Y';
+        imageUrl = makeImageUrl('chrY');
       } else {
-        var number = canonicalName.replace(/\D/g,'');
-        canonicalName = number || canonicalName;
+        var number = sequence.name.replace(/\D/g,'');
+        if (number < 23) {
+          title = 'Chromosome ' + number;
+          imageUrl = makeImageUrl('chr' + number);
+        } else {
+          title = sequence.name;
+        }
       }
 
-      var imageUrl = '/static/img/chr' + canonicalName + '.png';
-      var title = "Chromosome " + canonicalName;
       var summary = xFormat(sequence.sequenceLength) + " bases";
 
       var sequenceDiv = $('<div/>', {'class': 'sequence',
-        id: 'sequence-' + sequence.name}).appendTo(sequencesDiv);
-      $('<img>', {'class': 'pull-left', src: imageUrl}).appendTo(sequenceDiv);
+        id: sequenceId(sequence.name)}).appendTo(sequencesDiv);
+      if (imageUrl) {
+        $('<img>', {'class': 'pull-left', src: imageUrl}).appendTo(sequenceDiv);
+      }
       $('<div>', {'class': 'title'}).text(title).appendTo(sequenceDiv);
       $('<div>', {'class': 'summary'}).text(summary).appendTo(sequenceDiv);
 
@@ -396,7 +412,10 @@ var readgraph = new function() {
     $.each(reads, function(readi, read) {
       // Interpret the cigar
       // TODO: Compare the read against a reference as well
-      read.id = read.name + read.position + read.cigar;
+      if (!read.id) {
+        read.id = read.name + read.position + read.cigar;
+      }
+      read.name = read.name || read.id;
       read.readPieces = [];
       if (!read.cigar) {
         // Hack for unmapped reads
