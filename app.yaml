@@ -31,7 +31,7 @@ handlers:
 
 # All other urls get handled by main.py
 - url: .*
-  script: main.app
+  script: main.web_app
   login: required
 
 # Third party libraries that are included in the App Engine SDK

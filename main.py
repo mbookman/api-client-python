@@ -18,6 +18,15 @@ This file serves two main purposes
 - and it provides a simple set of apis to the javascript
 """
 
+# If this is set to true, the client_secrets.json must be valid and users will
+# be required to grant OAuth access to this app before continuing.
+# This enables the Google API to work
+REQUIRE_OAUTH = False
+
+# If this is set to true, then this file will assume that app engine is
+# being used to run the server.
+USE_APPENGINE = False
+
 import httplib2
 import jinja2
 import json
@@ -26,21 +35,19 @@ import os
 import socket
 import webapp2
 
-from oauth2client import appengine
-from google.appengine.api import users
-from google.appengine.api import urlfetch
-from google.appengine.api import memcache
-from google.appengine.ext import db
 
-# If this is set to true, the client_secrets.json must be valid and users will
-# be required to grant OAuth access to this app before continuing.
-# This enables the Google API to work
-REQUIRE_OAUTH = False
+if USE_APPENGINE:
+  from oauth2client import appengine
+  from google.appengine.api import users
+  from google.appengine.api import urlfetch
+  from google.appengine.api import memcache
+  from google.appengine.ext import db
 
-# Increase timeout to the maximum for all requests and use caching
-urlfetch.set_default_fetch_deadline(60)
+  # Increase timeout to the maximum for all requests and use caching
+  urlfetch.set_default_fetch_deadline(60)
+
 socket.setdefaulttimeout(60)
-http = httplib2.Http(cache=memcache)
+http = httplib2.Http(cache=memcache if USE_APPENGINE else None)
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -49,12 +56,25 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 
 client_secrets = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
 
-decorator = appengine.oauth2decorator_from_clientsecrets(
-    client_secrets,
-    scope=[
-      'https://www.googleapis.com/auth/genomics',
-      'https://www.googleapis.com/auth/devstorage.read_write'
-    ])
+if USE_APPENGINE:
+  decorator = appengine.oauth2decorator_from_clientsecrets(
+      client_secrets,
+      scope=[
+        'https://www.googleapis.com/auth/genomics',
+        'https://www.googleapis.com/auth/devstorage.read_write'
+      ])
+else:
+  class FakeOauthDecorator():
+    def http(self):
+      return http
+    def oauth_aware(self, method):
+      return method
+    @property
+    def callback_path(self):
+      return '/unused'
+    def callback_handler(self):
+      pass
+  decorator = FakeOauthDecorator()
 
 SUPPORTED_BACKENDS = {
   'NCBI' : {'name' : 'NCBI', 'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg'},
@@ -70,23 +90,34 @@ class ApiException(Exception):
 
 
 # Basic user settings
-class UserSettings(db.Model):
-  backend = db.StringProperty()
+# TODO: Rip out this dependency entirely, or at least cleanly abstract it
+if USE_APPENGINE:
+  class UserSettings(db.Model):
+    backend = db.StringProperty()
 
-def get_user_settings():
-  user = users.get_current_user()
-  u = UserSettings.get_by_key_name(key_names=user.email(),
-                                   read_policy=db.STRONG_CONSISTENCY)
-  if not u:
-    u = UserSettings(key_name=user.email())
-    u.backend = 'GOOGLE'
+  def get_user_settings():
+    user = users.get_current_user()
+    u = UserSettings.get_by_key_name(key_names=user.email(),
+                                     read_policy=db.STRONG_CONSISTENCY)
+    if not u:
+      u = UserSettings(key_name=user.email())
+      u.backend = 'GOOGLE'
+      u.put()
+    return u
+
+  def update_user_settings(backend):
+    u = get_user_settings()
+    u.backend = backend
     u.put()
-  return u
-
-def update_user_settings(backend):
-  u = get_user_settings()
-  u.backend = backend
-  u.put()
+else:
+  # Fake user settings
+  class UserSettings():
+    backend = 'GOOGLE'
+  user_settings = UserSettings()
+  def get_user_settings():
+    return user_settings
+  def update_user_settings(backend):
+    user_settings.backend = backend
 
 
 # Request handlers
@@ -218,8 +249,8 @@ class MainHandler(webapp2.RequestHandler):
     if not REQUIRE_OAUTH or decorator.has_credentials():
       template = JINJA_ENVIRONMENT.get_template('main.html')
       self.response.write(template.render({
-        'username': users.User().nickname(),
-        'logout_url': users.create_logout_url('/'),
+        'username': users.User().nickname() if USE_APPENGINE else '',
+        'logout_url': users.create_logout_url('/') if USE_APPENGINE else '',
         'backends': SUPPORTED_BACKENDS,
         'user_backend': get_user_settings().backend,
       }))
@@ -230,7 +261,7 @@ class MainHandler(webapp2.RequestHandler):
         'url': decorator.authorize_url()
       }))
 
-app = webapp2.WSGIApplication(
+web_app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
      ('/settings', SettingsHandler),
