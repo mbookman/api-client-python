@@ -186,13 +186,14 @@ class ReadSearchHandler(BaseRequestHandler):
   @decorator.oauth_aware
   def get(self):
     body = {
-      'datasetIds': [],
       'readsetIds': self.request.get('readsetIds').split(','),
       'sequenceName': self.request.get('sequenceName'),
       'sequenceStart': max(0, int(self.request.get('sequenceStart'))),
       'sequenceEnd': int(self.request.get('sequenceEnd')),
-      'pageToken': self.request.get('pageToken'),
-     }
+    }
+    pageToken = self.request.get('pageToken')
+    if pageToken:
+      body['pageToken'] = pageToken
     self.get_content("reads/search", body=body)
 
 
