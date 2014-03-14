@@ -32,6 +32,10 @@ from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 from google.appengine.ext import db
 
+# If this is set to true, the client_secrets.json must be valid and users will
+# be required to grant OAuth access to this app before continuing.
+# This enables the Google API to work
+REQUIRE_OAUTH = False
 
 # Increase timeout to the maximum for all requests and use caching
 urlfetch.set_default_fetch_deadline(60)
@@ -53,10 +57,13 @@ decorator = appengine.oauth2decorator_from_clientsecrets(
     ])
 
 SUPPORTED_BACKENDS = {
-  'GOOGLE' : {'name' : 'Google', 'url': 'https://www.googleapis.com/genomics/v1beta'},
   'NCBI' : {'name' : 'NCBI', 'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg'},
   'LOCAL' : {'name' : 'Local', 'url': 'http://localhost:5000'},
 }
+if REQUIRE_OAUTH:
+  # Google temporarily requires OAuth on all calls
+  SUPPORTED_BACKENDS['GOOGLE'] = {'name' : 'Google', 'url': 'https://www.googleapis.com/genomics/v1beta'}
+
 
 class ApiException(Exception):
   pass
@@ -97,7 +104,10 @@ class BaseRequestHandler(webapp2.RequestHandler):
       self.response.set_status(500)
 
   def get_backend(self):
-    return get_user_settings().backend
+    backend = get_user_settings().backend
+    if not SUPPORTED_BACKENDS.has_key(backend):
+      backend = 'LOCAL'
+    return backend
 
   def get_base_api_url(self):
     return SUPPORTED_BACKENDS[self.get_backend()]['url']
@@ -205,7 +215,7 @@ class MainHandler(webapp2.RequestHandler):
 
   @decorator.oauth_aware
   def get(self):
-    if decorator.has_credentials():
+    if not REQUIRE_OAUTH or decorator.has_credentials():
       template = JINJA_ENVIRONMENT.get_template('main.html')
       self.response.write(template.render({
         'username': users.User().nickname(),
