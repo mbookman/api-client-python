@@ -47,6 +47,11 @@ limitations under the License.
   margin-right: .5em;
 }
 
+#sequences .sequence .title {
+  white-space: normal;
+  word-wrap: break-word;
+}
+
 #sequences .sequence .summary {
   color: #999;
 }
