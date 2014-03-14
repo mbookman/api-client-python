@@ -39,11 +39,7 @@ import webapp2
 if USE_APPENGINE:
   from oauth2client import appengine
   from google.appengine.api import users
-  from google.appengine.api import urlfetch
   from google.appengine.api import memcache
-
-  # Increase timeout to the maximum for all requests and use caching
-  urlfetch.set_default_fetch_deadline(60)
 
 socket.setdefaulttimeout(60)
 http = httplib2.Http(cache=memcache if USE_APPENGINE else None)
