@@ -41,7 +41,6 @@ if USE_APPENGINE:
   from google.appengine.api import users
   from google.appengine.api import urlfetch
   from google.appengine.api import memcache
-  from google.appengine.ext import db
 
   # Increase timeout to the maximum for all requests and use caching
   urlfetch.set_default_fetch_deadline(60)
@@ -89,37 +88,6 @@ class ApiException(Exception):
   pass
 
 
-# Basic user settings
-# TODO: Rip out this dependency entirely, or at least cleanly abstract it
-if USE_APPENGINE:
-  class UserSettings(db.Model):
-    backend = db.StringProperty()
-
-  def get_user_settings():
-    user = users.get_current_user()
-    u = UserSettings.get_by_key_name(key_names=user.email(),
-                                     read_policy=db.STRONG_CONSISTENCY)
-    if not u:
-      u = UserSettings(key_name=user.email())
-      u.backend = 'GOOGLE'
-      u.put()
-    return u
-
-  def update_user_settings(backend):
-    u = get_user_settings()
-    u.backend = backend
-    u.put()
-else:
-  # Fake user settings
-  class UserSettings():
-    backend = 'GOOGLE'
-  user_settings = UserSettings()
-  def get_user_settings():
-    return user_settings
-  def update_user_settings(backend):
-    user_settings.backend = backend
-
-
 # Request handlers
 class BaseRequestHandler(webapp2.RequestHandler):
   def handle_exception(self, exception, debug_mode):
@@ -135,9 +103,9 @@ class BaseRequestHandler(webapp2.RequestHandler):
       self.response.set_status(500)
 
   def get_backend(self):
-    backend = get_user_settings().backend
-    if not SUPPORTED_BACKENDS.has_key(backend):
-      backend = 'LOCAL'
+    backend = self.request.get('backend')
+    if not backend:
+      raise ApiException('Backend parameter must be set')
     return backend
 
   def get_base_api_url(self):
@@ -204,10 +172,6 @@ class ReadSearchHandler(BaseRequestHandler):
     self.get_content("reads/search", body=body)
 
 
-class SettingsHandler(webapp2.RequestHandler):
-  def post(self):
-    update_user_settings(self.request.get('backend'))
-
 class MainHandler(webapp2.RequestHandler):
 
   @decorator.oauth_aware
@@ -218,7 +182,6 @@ class MainHandler(webapp2.RequestHandler):
         'username': users.User().nickname() if USE_APPENGINE else '',
         'logout_url': users.create_logout_url('/') if USE_APPENGINE else '',
         'backends': SUPPORTED_BACKENDS,
-        'user_backend': get_user_settings().backend,
       }))
     else:
       # TODO: What kind of access do the non-google backends need?
@@ -230,7 +193,6 @@ class MainHandler(webapp2.RequestHandler):
 web_app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
-     ('/settings', SettingsHandler),
      ('/api/reads', ReadSearchHandler),
      ('/api/readsets', ReadsetSearchHandler),
      (decorator.callback_path, decorator.callback_handler()),

@@ -46,26 +46,7 @@ function closeButton() {
   return $('<button type="button" class="close" aria-hidden="true">&times;</button>');
 }
 
-function getBackend() {
-  return $('#backend').val();
-}
-
-function getBackendName() {
-  return $('#backend option:selected').text();
-}
-
-function saveSettings() {
-  $.post('/settings', {backend: getBackend()}).done(function() {
-    searchReadsets();
-  });
-  return false;
-}
-
-function removeReadset(name, id) {
-  readgraph.removeReadset(id);
-}
-
-function addReadset(name, id) {
+function addReadset(backend, name, id) {
   if (readgraph.hasReadset(id)) {
     showMessage(name + ' has already been selected');
     return;
@@ -78,12 +59,12 @@ function addReadset(name, id) {
       .text(name).appendTo(readsetList);
   closeButton().appendTo(li).click(function() {
     li.remove();
-    removeReadset(name, id);
+    readgraph.removeReadset(id);
   });
 
-  $.getJSON('/api/readsets', {'readsetId': id})
+  $.getJSON('/api/readsets', {'backend' : backend, 'readsetId': id})
       .done(function(res) {
-        readgraph.addReadset(id, res.fileData[0].refSequences);
+        readgraph.addReadset(backend, id, res.fileData[0].refSequences);
       }).fail(function() {
         li.remove();
       });
@@ -94,14 +75,18 @@ function searchReadsets(button) {
     button = $(button);
     button.button('loading');
   }
+
   var div = $('#readsetResults').html('<img src="static/img/spinner.gif"/>');
-  $.getJSON('/api/readsets')
+  var backend = $('#backend').val();
+  var backendName = $('#backend option:selected').text();
+
+  $.getJSON('/api/readsets', {'backend' : backend})
       .done(function(res) {
         div.empty();
         $.each(res.readsets, function(i, data) {
-          var name = getBackendName() + ": " + data.name;
+          var name = backendName + ": " + data.name;
           $('<a/>', {'href': '#', 'class': 'list-group-item'}).text(name).appendTo(div).click(function() {
-            addReadset(name, data.id);
+            addReadset(backend, name, data.id);
           });
         })
       }).always(function() {

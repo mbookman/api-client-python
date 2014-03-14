@@ -36,7 +36,6 @@ limitations under the License.
     <ul class="nav navbar-nav" id="mainNav">
       <li class="active"><a href="#" onclick="toggleUi('reads', this)">Browser</a></li>
       <li><a href="#" data-toggle="modal" data-target="#about">About</a></li>
-      <li><a href="#" data-toggle="modal" data-target="#settings">Settings</a></li>
     </ul>
 
     <ul class="nav navbar-nav navbar-right">
@@ -85,42 +84,26 @@ limitations under the License.
   </div>
 </div>
 
-<div class="modal" id="settings">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-        <h4 class="modal-title">Settings</h4>
-      </div>
-      <div class="modal-body">
-        <form class="form">
-          <div class="form-group">
-            <label for="backend">Data provider</label>
-            <select class="form-control" id="backend">
-              {% for backend, data in backends.iteritems() %}
-                <option {% if user_backend == backend %} selected="selected" {% endif %} value="{{ backend }}">
-                     {{ data.name }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" onclick="return saveSettings()" data-dismiss="modal">Save</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div class="modal" id="readsetSearch">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-        <h4 class="modal-title">Select readsets to view</h4>
+        <h4 class="modal-title">Select a readset to view</h4>
       </div>
       <div class="modal-body">
+        <form class="form-inline" style="margin-bottom: 10px">
+          <div class="form-group">
+            <select class="form-control" id="backend" style="min-width: 200px">
+              {% for backend, data in backends.iteritems() %}
+                <option value="{{ backend }}">
+                     {{ data.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="return searchReadsets(this)">Search</button>
+        </form>
         <div id="readsetResults" class="list-group">
           <img src="static/img/spinner.gif"/>
         </div>

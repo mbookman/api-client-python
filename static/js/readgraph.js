@@ -38,6 +38,7 @@ var readgraph = new function() {
 
   // Current state
   var readsetIds = [];
+  var readsetBackend = null;
   var sequences = null;
   var currentSequence = null;
   var xhrTimeout = null;
@@ -540,6 +541,7 @@ var readgraph = new function() {
   var makeQueryParams = function(sequenceStart, sequenceEnd, type) {
     var queryParams = {};
     queryParams.readsetIds = readsetIds.join(',');
+    queryParams.backend = readsetBackend;
     queryParams.type = type;
     queryParams.sequenceName = currentSequence.name;
     queryParams.sequenceStart = parseInt(sequenceStart);
@@ -589,7 +591,8 @@ var readgraph = new function() {
   };
 
   // TODO: Support multiple readsets
-  this.addReadset = function(id, sequenceData) {
+  this.addReadset = function(backend, id, sequenceData) {
+    readsetBackend = backend;
     readsetIds = [id];
     if (readsetIds.length == 1) {
       sequences = sequenceData;
