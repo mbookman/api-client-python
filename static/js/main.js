@@ -80,15 +80,42 @@ function searchReadsets(button) {
   var backend = $('#backend').val();
   var backendName = $('#backend option:selected').text();
 
+  function getItemsOnPage(page) {
+    return $('#readsetResults .list-group-item[page=' + page + ']');
+  }
+
+  var readsetsPerPage = 10;
   $.getJSON('/api/readsets', {'backend' : backend})
       .done(function(res) {
         div.empty();
+        var totalPages = Math.ceil(res.readsets.length / readsetsPerPage);
+
         $.each(res.readsets, function(i, data) {
           var name = backendName + ": " + data.name;
-          $('<a/>', {'href': '#', 'class': 'list-group-item'}).text(name).appendTo(div).click(function() {
+          $('<a/>', {'href': '#', 'class': 'list-group-item', 'page': Math.floor(i / readsetsPerPage) + 1})
+              .text(name).appendTo(div).click(function() {
             addReadset(backend, name, data.id);
-          });
+          }).hide();
         })
+        getItemsOnPage(1).show();
+
+        var pagination = $('#readsetPagination');
+        if (totalPages > 1) {
+          pagination.show();
+          pagination.bootstrapPaginator({
+            currentPage: 1,
+            totalPages: totalPages,
+            bootstrapMajorVersion: 3,
+            alignment: 'center',
+            onPageChanged: function(event, oldPage, newPage) {
+              getItemsOnPage(oldPage).hide();
+              getItemsOnPage(newPage).show();
+            }
+          });
+        } else {
+          pagination.hide();
+        }
+
       }).always(function() {
         button && button.button('reset');
       });
