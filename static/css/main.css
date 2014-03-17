@@ -64,6 +64,14 @@ limitations under the License.
   word-wrap: break-word;
 }
 
+#readsetPagination {
+  text-align: center;
+}
+
+#readsetPagination ul {
+  margin: 0;
+}
+
 .alert {
   z-index: 10000;
   position: fixed;

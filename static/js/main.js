@@ -88,6 +88,14 @@ function searchReadsets(button) {
   $.getJSON('/api/readsets', {'backend' : backend})
       .done(function(res) {
         div.empty();
+
+        var pagination = $('#readsetPagination');
+        pagination.hide();
+
+        if (!res.readsets) {
+          return;
+        }
+
         var totalPages = Math.ceil(res.readsets.length / readsetsPerPage);
 
         $.each(res.readsets, function(i, data) {
@@ -99,21 +107,16 @@ function searchReadsets(button) {
         })
         getItemsOnPage(1).show();
 
-        var pagination = $('#readsetPagination');
         if (totalPages > 1) {
           pagination.show();
-          pagination.bootstrapPaginator({
-            currentPage: 1,
-            totalPages: totalPages,
-            bootstrapMajorVersion: 3,
-            alignment: 'center',
-            onPageChanged: function(event, oldPage, newPage) {
-              getItemsOnPage(oldPage).hide();
-              getItemsOnPage(newPage).show();
-            }
+          pagination.bootpag({
+            page: 1,
+            total: totalPages,
+            maxVisible: 5
+          }).on("page", function(event, newPage) {
+            $('#readsetResults .list-group-item').hide();
+            getItemsOnPage(newPage).show();
           });
-        } else {
-          pagination.hide();
         }
 
       }).always(function() {
