@@ -39,7 +39,7 @@ function showAlert(message, type) {
 
   setTimeout(function() {
     alert.alert('close')
-  }, 2000);
+  }, 3000);
 }
 
 function closeButton() {
@@ -93,6 +93,7 @@ function searchReadsets(button) {
         pagination.hide();
 
         if (!res.readsets) {
+          div.html('No readsets found');
           return;
         }
 

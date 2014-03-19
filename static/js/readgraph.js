@@ -63,7 +63,7 @@ var readgraph = new function() {
     updateDisplay();
   };
 
-  var moveTosequencePosition = function(position) {
+  var moveToSequencePosition = function(position) {
     position = Math.max(0, position);
     position = Math.min(currentSequence['length'], position);
 
@@ -146,7 +146,7 @@ var readgraph = new function() {
       zoom.scale(newZoom);
 
       handleZoom();
-      moveTosequencePosition(middleX);
+      moveToSequencePosition(middleX);
     };
 
     zoom = d3.behavior.zoom().size([width, height]).on("zoom", handleZoom);
@@ -179,8 +179,14 @@ var readgraph = new function() {
   this.jumpGraph = function(position) {
     // TODO: Support non-int positions - feature, gene, etc
     position = parseInt(position.replace(/,/g, ''));
+    var currentLength = currentSequence['length'];
+
     if (position != 0 && !position) {
       showMessage('Only numbered positions are supported right now');
+      return;
+    } else if (position > currentLength) {
+      showMessage('This sequence only has ' + xFormat(currentLength) +
+          ' bases. Please try a smaller position.');
       return;
     }
 
@@ -189,7 +195,7 @@ var readgraph = new function() {
       zoom.scale(zoomLevel);
       handleZoom();
     }
-    moveTosequencePosition(position);
+    moveToSequencePosition(position);
   };
 
   var addImage = function(parent, name, width, height, x, y,
