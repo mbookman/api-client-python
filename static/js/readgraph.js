@@ -292,11 +292,12 @@ var readgraph = new function() {
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
 
+    if (!opt_skipReadQuery) {
+      queryReads(sequenceStart, sequenceEnd);
+    }
+
     // TODO: Bring back coverage and summary views
     if (readView) {
-      if (!opt_skipReadQuery) {
-        queryReads(sequenceStart, sequenceEnd);
-      }
       outlines.attr("points", outlinePoints);
 
     } else if (baseView) {
