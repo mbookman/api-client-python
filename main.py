@@ -51,7 +51,7 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 
 client_secrets = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
 
-if USE_APPENGINE:
+if USE_APPENGINE and REQUIRE_OAUTH:
   decorator = appengine.oauth2decorator_from_clientsecrets(
       client_secrets,
       scope=[
@@ -142,7 +142,7 @@ class ReadsetSearchHandler(BaseRequestHandler):
       if backend == 'GOOGLE':
         body = {'datasetIds': ['376902546192']}
       elif backend == 'NCBI':
-        body = {'datasetIds': ["SRP034507"]}
+        body = {'datasetIds': ['SRP034507']}
       else:
         body = {'datasetIds' : []}
       self.get_content("readsets/search?fields=readsets(id,name)", body=body)
