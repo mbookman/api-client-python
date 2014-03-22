@@ -177,15 +177,55 @@ var readgraph = new function() {
   };
 
   this.jumpGraph = function(position) {
-    // TODO: Support non-int positions - feature, gene, etc
-    position = parseInt(position.replace(/,/g, ''));
-    var currentLength = currentSequence['length'];
+    // TODO: Support more non-int positions - feature, gene, etc
+    if (/^rs/i.test(position)) {
+      // Snps
+      showMessage('Looking up SNP: ' + position);
+      $.getJSON('api/snps', {snp: position}).done(function(res) {
+        if (res.position == -1) {
+          showMessage('Could not find SNP: ' + position);
+        } else {
+          jumpToPosition(res.position, res.chr);
+        }
+      });
+    } else {
+      // Numbered positions
+      position = parseInt(position.replace(/,/g, ''));
+      if (position != 0 && !position) {
+        showMessage('Only numbered positions and SNPs are supported right now');
+        return;
+      }
+      jumpToPosition(position);
+    }
+  };
 
-    if (position != 0 && !position) {
-      showMessage('Only numbered positions are supported right now');
-      return;
-    } else if (position > currentLength) {
-      showMessage('This sequence only has ' + xFormat(currentLength) +
+  var fuzzyFindSequence = function(chr) {
+    var actualNames = _.pluck(sequences, 'name');
+    var possibleNames = [chr, "chr" + chr];
+    possibleNames = _.intersection(actualNames, possibleNames);
+
+    if (possibleNames.length > 0) {
+      return _.findWhere(sequences, {name: possibleNames[0]});
+    }
+    return null;
+  };
+
+  var jumpToPosition = function(position, chr) {
+    if (chr) {
+      // Update our sequence
+      var sequence = fuzzyFindSequence(chr);
+      if (!sequence) {
+        showError('This readset doesn\'t have the sequence ' + chr +
+          '. Please try a different position.');
+        return;
+      }
+
+      selectSequence(sequence);
+    }
+
+    var currentLength = currentSequence['length'];
+    if (position > currentLength) {
+      showError('This sequence only has ' + xFormat(currentLength) +
           ' bases. Please try a smaller position.');
       return;
     }
@@ -218,7 +258,16 @@ var readgraph = new function() {
   var selectSequence = function(sequence) {
     currentSequence = sequence;
     $('.sequence').removeClass('active');
-    $('#' + sequenceId(sequence.name)).addClass('active');
+    var div = $('#' + sequenceId(sequence.name)).addClass('active');
+
+    // Make sure the selected sequence div is visible
+    var divLeft = div.offset().left;
+    var windowWidth = $(window).width();
+    if (divLeft < 0 || divLeft > windowWidth - 200) {
+      var currentScroll = $("#sequences").scrollLeft();
+      $("#sequences").animate({scrollLeft: currentScroll + divLeft - windowWidth/2});
+    }
+
     $('#graph').show();
     if (!setupRun) {
       setup();

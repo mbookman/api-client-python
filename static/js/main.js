@@ -39,7 +39,7 @@ function showAlert(message, type) {
 
   setTimeout(function() {
     alert.alert('close')
-  }, 3000);
+  }, type == 'danger' ? 5000 : 3000);
 }
 
 function closeButton() {

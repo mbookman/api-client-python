@@ -140,7 +140,7 @@ class ReadsetSearchHandler(BaseRequestHandler):
     if not readset_id:
       # Temporary requirements to satisfy each backend
       if backend == 'GOOGLE':
-        body = {'datasetIds': ['376902546192']}
+        body = {'datasetIds': ['383928317087']}
       elif backend == 'NCBI':
         body = {'datasetIds': ['SRP034507']}
       else:
@@ -168,6 +168,21 @@ class ReadSearchHandler(BaseRequestHandler):
     self.get_content("reads/search", body=body)
 
 
+class SnpSearchHandler(webapp2.RequestHandler):
+  def get(self):
+    snp = self.request.get('snp')
+    response, content = http.request(
+        uri="https://opensnp.org/snps/json/annotation/%s.json" % (snp))
+
+    try:
+      content = json.loads(content)['snp']
+      position = content['position']
+      chromosome = content['chromosome']
+    except (ValueError, KeyError):
+      position = -1
+      chromosome = ""
+    self.response.write(json.dumps({'position': position, 'chr': chromosome}))
+
 class MainHandler(webapp2.RequestHandler):
 
   @decorator.oauth_aware
@@ -191,6 +206,7 @@ web_app = webapp2.WSGIApplication(
      ('/', MainHandler),
      ('/api/reads', ReadSearchHandler),
      ('/api/readsets', ReadsetSearchHandler),
+     ('/api/snps', SnpSearchHandler),
      (decorator.callback_path, decorator.callback_handler()),
     ],
     debug=True)
