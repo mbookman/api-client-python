@@ -185,7 +185,9 @@ var readgraph = new function() {
         if (res.position == -1) {
           showMessage('Could not find SNP: ' + position);
         } else {
-          jumpToPosition(res.position, res.chr);
+          showMessage('SNP found on chromosome ' + res.chr +
+              ' at position ' + xFormat(res.position));
+          jumpToPosition(res.position, res.chr, true);
         }
       });
     } else {
@@ -195,7 +197,7 @@ var readgraph = new function() {
         showMessage('Only numbered positions and SNPs are supported right now');
         return;
       }
-      jumpToPosition(position);
+      jumpToPosition(position, null, true);
     }
   };
 
@@ -210,7 +212,7 @@ var readgraph = new function() {
     return null;
   };
 
-  var jumpToPosition = function(position, chr) {
+  var jumpToPosition = function(position, chr, baseView) {
     if (chr) {
       // Update our sequence
       var sequence = fuzzyFindSequence(chr);
@@ -220,7 +222,7 @@ var readgraph = new function() {
         return;
       }
 
-      selectSequence(sequence);
+      selectSequence(sequence, true);
     }
 
     var currentLength = currentSequence['length'];
@@ -230,7 +232,7 @@ var readgraph = new function() {
       return;
     }
 
-    var zoomLevel = maxZoom / (zoomLevelChange * 2); // Read level
+    var zoomLevel = baseView ? maxZoom : maxZoom / zoomLevelChange; // Read level
     if (zoom.scale() != zoomLevel) {
       zoom.scale(zoomLevel);
       handleZoom();
@@ -255,7 +257,7 @@ var readgraph = new function() {
     return 'sequence-' + name.replace(/[\|\.]/g, '');
   };
 
-  var selectSequence = function(sequence) {
+  var selectSequence = function(sequence, opt_skipJumping) {
     currentSequence = sequence;
     $('.sequence').removeClass('active');
     var div = $('#' + sequenceId(sequence.name)).addClass('active');
@@ -280,11 +282,15 @@ var readgraph = new function() {
     zoom.x(x).scaleExtent([1, maxZoom]).size([width, height]);
 
     $('#jumpDiv').show();
+    if (opt_skipJumping) {
+      return;
+    }
+
     handleZoom();
 
     // Zoom into a given position because the overall zoom isn't supported
     var initialPosition = currentSequence['length'] / 2;
-    readgraph.jumpGraph(initialPosition.toString());
+    jumpToPosition(initialPosition);
   };
 
   var makeImageUrl = function(name) {
@@ -327,6 +333,8 @@ var readgraph = new function() {
         selectSequence(sequence);
       });
     });
+
+    $('#jumpDiv').show();
   };
 
   var updateDisplay = function(opt_skipReadQuery) {
@@ -347,7 +355,7 @@ var readgraph = new function() {
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
 
-    if (!opt_skipReadQuery) {
+    if (!opt_skipReadQuery && (readView || baseView)) {
       queryReads(sequenceStart, sequenceEnd);
     }
 
@@ -654,7 +662,6 @@ var readgraph = new function() {
       sequences = sequenceData;
       updateSequences();
       $('#chooseReadsetMessage').hide();
-      $('#jumpDiv').hide();
       clearReads();
     }
   };
