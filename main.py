@@ -32,9 +32,9 @@ import jinja2
 import json
 import logging
 import os
+import re
 import socket
 import webapp2
-
 
 if USE_APPENGINE:
   from oauth2client import appengine
@@ -171,17 +171,22 @@ class ReadSearchHandler(BaseRequestHandler):
 class SnpSearchHandler(webapp2.RequestHandler):
   def get(self):
     snp = self.request.get('snp')
-    response, content = http.request(
-        uri="https://opensnp.org/snps/json/annotation/%s.json" % (snp))
+    uri = "http://bots.snpedia.com/api.php?action=query&prop=revisions&" \
+          "format=json&rvprop=content&titles=%s" % snp
+    response, content = http.request(uri=uri)
 
     try:
-      content = json.loads(content)['snp']
-      position = content['position']
-      chromosome = content['chromosome']
-    except (ValueError, KeyError):
+      page_id, page = json.loads(content)['query']['pages'].popitem()
+      content = page['revisions'][0]['*']
+
+      position = re.search('position=(.*)\n', content, re.IGNORECASE).group(1)
+      chromosome = re.search('chromosome=(.*)\n', content,
+                             re.IGNORECASE).group(1)
+    except (ValueError, KeyError, AttributeError):
       position = -1
       chromosome = ""
     self.response.write(json.dumps({'position': position, 'chr': chromosome}))
+
 
 class MainHandler(webapp2.RequestHandler):
 
