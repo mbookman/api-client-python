@@ -179,13 +179,16 @@ class SnpSearchHandler(webapp2.RequestHandler):
       page_id, page = json.loads(content)['query']['pages'].popitem()
       content = page['revisions'][0]['*']
 
-      position = re.search('position=(.*)\n', content, re.IGNORECASE).group(1)
-      chromosome = re.search('chromosome=(.*)\n', content,
-                             re.IGNORECASE).group(1)
+      response = {
+        'position': re.search('position=(.*)\n', content,
+                              re.IGNORECASE).group(1),
+        'chr': re.search('chromosome=(.*)\n', content, re.IGNORECASE).group(1),
+        'name': page['title'],
+        'link': 'http://www.snpedia.com/index.php/%s' % page['title']
+      }
     except (ValueError, KeyError, AttributeError):
-      position = -1
-      chromosome = ""
-    self.response.write(json.dumps({'position': position, 'chr': chromosome}))
+      response = {'position': -1}
+    self.response.write(json.dumps(response))
 
 
 class MainHandler(webapp2.RequestHandler):

@@ -72,6 +72,15 @@ limitations under the License.
   margin: 0;
 }
 
+#jumpResults {
+  margin: 20px 0 0 0;
+}
+
+#jumpResults .title {
+  font-size: 1.1em;
+  font-weight: 500;
+}
+
 .alert {
   z-index: 10000;
   position: fixed;
@@ -97,6 +106,11 @@ svg {
 }
 .hovertext {
   fill: #999;
+}
+
+.positionIndicator.background {
+  fill: red;
+  fill-opacity: .1;
 }
 
 .zoomGroup rect {

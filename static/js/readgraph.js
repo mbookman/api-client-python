@@ -41,10 +41,11 @@ var readgraph = new function() {
   var readsetBackend = null;
   var sequences = null;
   var currentSequence = null;
+  var readStats = {}; // Map from position to stat information
   var xhrTimeout = null;
 
   // Dom elements
-  var svg, readGroup, readDiv, spinner = null;
+  var svg, positionIndicator, readGroup, readDiv, spinner = null;
 
   var getScaleLevel = function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
@@ -122,9 +123,36 @@ var readgraph = new function() {
       } else {
         hovertext.attr('x', mouseX + 3).style('text-anchor', 'start');
       }
-      hovertext.text(xFormat(x.invert(mouseX)));
+
+      var position = Math.floor(x.invert(mouseX));
+      hovertext.selectAll('tspan').remove();
+      hovertext.append('tspan').text(xFormat(position));
+
+      if (readStats[position]) {
+        var counts = _.countBy(readStats[position]);
+        hovertext.append('tspan')
+            .attr('y', textHeight*2).attr('x', hovertext.attr('x'))
+            .text(_.reduce(counts, function(memo, num, key) {
+              return memo + num + key + " ";
+            }, ""));
+      }
+
       hoverline.attr("x1", mouseX).attr("x2", mouseX)
     });
+
+    // Position indicator
+    positionIndicator = svg.append('g')
+        .attr('transform', 'translate(0,0)')
+        .attr('class', 'axis');
+    positionIndicator.append('rect')
+        .attr('class', 'positionIndicator background')
+        .attr('x', 0).attr('y', 0)
+        .attr('width', textWidth * 1.5).attr('height', height - margin);
+    positionIndicator.append('text')
+        .attr('class', 'positionIndicator text')
+        .attr('x', 3)
+        .attr('y', height - margin - textHeight);
+    toggleVisibility(positionIndicator, false);
 
     // Groups
     readGroup = svg.append('g').attr('class', 'readGroup');
@@ -177,6 +205,8 @@ var readgraph = new function() {
   };
 
   this.jumpGraph = function(position) {
+    var jumpResults = $("#jumpResults").empty();
+
     // TODO: Support more non-int positions - feature, gene, etc
     if (/^rs/i.test(position)) {
       // Snps
@@ -185,9 +215,17 @@ var readgraph = new function() {
         if (res.position == -1) {
           showMessage('Could not find SNP: ' + position);
         } else {
-          showMessage('SNP found on chromosome ' + res.chr +
-              ' at position ' + xFormat(res.position));
-          jumpToPosition(res.position, res.chr, true);
+          var listItem = $('<a/>', {'href': '#', 'class': 'list-group-item'})
+              .appendTo(jumpResults).click(function() {
+                jumpToPosition(res.position, res.chr, true, position);
+              });
+          $('<span>', {'class': 'title'}).text(res.name).appendTo(listItem);
+          $('<a>', {'href': res.link, 'target': '_blank'}).text(' SNPedia')
+              .appendTo(listItem);
+          $('<div>').text('chr ' + res.chr + ' at ' + xFormat(res.position))
+              .appendTo(listItem);
+
+          jumpToPosition(res.position, res.chr, true, position);
         }
       });
     } else {
@@ -212,7 +250,7 @@ var readgraph = new function() {
     return null;
   };
 
-  var jumpToPosition = function(position, chr, baseView) {
+  var jumpToPosition = function(position, chr, baseView, displayName) {
     if (chr) {
       // Update our sequence
       var sequence = fuzzyFindSequence(chr);
@@ -231,6 +269,10 @@ var readgraph = new function() {
           ' bases. Please try a smaller position.');
       return;
     }
+
+    positionIndicator.attr('position', baseView ? position : -1);
+    positionIndicator.selectAll('text')
+        .text(baseView ? (displayName || xFormat(position)) : '');
 
     var zoomLevel = baseView ? maxZoom : maxZoom / zoomLevelChange; // Read level
     if (zoom.scale() != zoomLevel) {
@@ -351,6 +393,7 @@ var readgraph = new function() {
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(outlines, readView);
     toggleVisibility(letters, baseView);
+    toggleVisibility(positionIndicator, baseView);
 
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
@@ -377,6 +420,8 @@ var readgraph = new function() {
           .attr("y", function(data, i) {
             return y(data.ry) + textHeight/2;
           });
+      var indicatorX = x(positionIndicator.attr('position')) + textWidth/2 - 2;
+      positionIndicator.attr('transform', 'translate(' + indicatorX + ',0)');
     }
   };
 
@@ -477,6 +522,7 @@ var readgraph = new function() {
   var setReads = function(reads) {
     var yTracks = [];
     var readIds = {};
+    readStats = {};
     $.each(reads, function(readi, read) {
       // Interpret the cigar
       // TODO: Compare the read against a reference as well
@@ -500,9 +546,12 @@ var readgraph = new function() {
       }
 
       var addLetter = function(type, letter, qual) {
+        var basePosition = read.position + read.readPieces.length;
+        readStats[basePosition] = readStats[basePosition] || [];
+        readStats[basePosition].push(letter);
         read.readPieces.push({
           'letter' : letter,
-          'rx': read.position + read.readPieces.length,
+          'rx': basePosition,
           'qual': qual,
           'cigarType': type
         });
@@ -531,9 +580,6 @@ var readgraph = new function() {
             break;
           case 'S': // TODO: Reveal this skipped data somewhere
             baseIndex += baseCount;
-            if (m == 0) {
-              read.position += baseCount;
-            }
             break;
           case 'I': // TODO: What should an insertion look like?
           case 'x': // TODO: Color these differently
