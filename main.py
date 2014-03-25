@@ -169,26 +169,43 @@ class ReadSearchHandler(BaseRequestHandler):
 
 
 class SnpSearchHandler(webapp2.RequestHandler):
-  def get(self):
-    snp = self.request.get('snp')
+
+  def getSnppediaPageContent(self, snp):
     uri = "http://bots.snpedia.com/api.php?action=query&prop=revisions&" \
           "format=json&rvprop=content&titles=%s" % snp
     response, content = http.request(uri=uri)
 
-    try:
-      page_id, page = json.loads(content)['query']['pages'].popitem()
-      content = page['revisions'][0]['*']
+    page_id, page = json.loads(content)['query']['pages'].popitem()
+    return page['revisions'][0]['*']
 
-      response = {
-        'position': re.search('position=(.*)\n', content,
-                              re.IGNORECASE).group(1),
-        'chr': re.search('chromosome=(.*)\n', content, re.IGNORECASE).group(1),
-        'name': page['title'],
-        'link': 'http://www.snpedia.com/index.php/%s' % page['title']
-      }
+  def getSnpResponse(self, snp, content):
+    response = {
+      'name': snp,
+      'link': 'http://www.snpedia.com/index.php/%s' % snp
+    }
+    try:
+      response['position'] = re.search('position=(.*)\n', content, re.I).group(1)
+      response['chr'] = re.search('chromosome=(.*)\n', content, re.I).group(1)
+    except (KeyError, AttributeError):
+      pass # Ignore parse failures
+    return response
+
+  def get(self):
+    snp = self.request.get('snp')
+
+    try:
+      content = self.getSnppediaPageContent(snp)
+      if snp[:2].lower() == 'rs':
+        snps = [self.getSnpResponse(snp, content)]
+      else:
+        # Try a gene format
+        snps = re.findall('\[\[(rs\d+?)\]\]', content, re.I)
+        snps = [self.getSnpResponse(s, self.getSnppediaPageContent(s))
+                for s in set(snps)]
+
     except (ValueError, KeyError, AttributeError):
-      response = {'position': -1}
-    self.response.write(json.dumps(response))
+      snps = []
+    self.response.write(json.dumps({'snps' : snps}))
 
 
 class MainHandler(webapp2.RequestHandler):

@@ -204,38 +204,45 @@ var readgraph = new function() {
     spinner.style('display', 'none');
   };
 
-  this.jumpGraph = function(position) {
+  this.jumpGraph = function(location) {
     var jumpResults = $("#jumpResults").empty();
+    var position = parseInt(location.replace(/,/g, ''));
+    if (position > 0) {
+      // Numbered positions
+      jumpToPosition(position, null, true);
 
-    // TODO: Support more non-int positions - feature, gene, etc
-    if (/^rs/i.test(position)) {
-      // Snps
-      showMessage('Looking up SNP: ' + position);
-      $.getJSON('api/snps', {snp: position}).done(function(res) {
-        if (res.position == -1) {
-          showMessage('Could not find SNP: ' + position);
+    } else {
+      // Queried locations
+      showMessage('Looking up location: ' + location);
+
+      $.getJSON('api/snps', {snp: location}).done(function(res) {
+        if (res.snps.length == 0) {
+          showMessage('Could not find location: ' + location);
+
         } else {
-          var listItem = $('<a/>', {'href': '#', 'class': 'list-group-item'})
-              .appendTo(jumpResults).click(function() {
-                jumpToPosition(res.position, res.chr, true, position);
-              });
-          $('<span>', {'class': 'title'}).text(res.name).appendTo(listItem);
-          $('<a>', {'href': res.link, 'target': '_blank'}).text(' SNPedia')
-              .appendTo(listItem);
-          $('<div>').text('chr ' + res.chr + ' at ' + xFormat(res.position))
-              .appendTo(listItem);
+          $.each(res.snps, function(i, snp) {
+            var listItem = $('<a/>', {'href': '#', 'class': 'list-group-item'})
+                .appendTo(jumpResults).click(function() {
+                  if (snp.position) {
+                    jumpToPosition(snp.position, snp.chr, true, snp.name);
+                  } else {
+                    showMessage('Could not find a position for this snp.' +
+                        ' Check SNPedia for more information.');
+                  }
+                });
+            $('<span>', {'class': 'title'}).text(snp.name + ' ')
+                .appendTo(listItem);
+            $('<a>', {'href': snp.link, 'target': '_blank'}).text('SNPedia')
+                .appendTo(listItem);
+            if (snp.position) {
+              $('<div>').text('chr ' + snp.chr + ' at ' + xFormat(snp.position))
+                  .appendTo(listItem);
+            }
+          });
 
-          jumpToPosition(res.position, res.chr, true, position);
+          $("#jumpResults .list-group-item").click();
         }
       });
-    } else {
-      // Numbered positions
-      position = parseInt(position.replace(/,/g, ''));
-      if (position != 0 && !position) {
-        showMessage('Only numbered positions and SNPs are supported right now');
-        return;
-      }
-      jumpToPosition(position, null, true);
     }
   };
 
