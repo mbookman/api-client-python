@@ -23,6 +23,7 @@ limitations under the License.
   <script src="/static/js/d3.v3.min.js" charset="utf-8"></script>
   <script src="/static/js/underscore-min.js" charset="utf-8"></script>
   <script src="/static/js/jquery.bootpag.min.js" charset="utf-8"></script>
+  <script src="/static/js/jquery.uriAnchor.js" charset="utf-8"></script>
 
   <!-- Browser code -->
   <link rel="stylesheet" href="/static/css/main.css">
@@ -133,7 +134,7 @@ limitations under the License.
           <input type="text" class="form-control" name="name" placeholder="APOE or rs4420638 or 150,000" id="readsetPosition">
         </div>
         <button type="submit" class="btn btn-primary"
-                onclick="readgraph.jumpGraph($('#readsetPosition').val()); return false;">Jump to position</button>
+                onclick="switchToLocation($('#readsetPosition').val()); return false;">Jump to position</button>
         <div id="jumpResults" class="list-group"></div>
       </form>
     </div>

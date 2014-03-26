@@ -229,6 +229,7 @@ var readgraph = new function() {
                     showMessage('Could not find a position for this snp.' +
                         ' Check SNPedia for more information.');
                   }
+                  return false;
                 });
             $('<span>', {'class': 'title'}).text(snp.name + ' ')
                 .appendTo(listItem);
