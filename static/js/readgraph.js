@@ -234,7 +234,10 @@ var readgraph = new function() {
             $('<span>', {'class': 'title'}).text(snp.name + ' ')
                 .appendTo(listItem);
             $('<a>', {'href': snp.link, 'target': '_blank'}).text('SNPedia')
-                .appendTo(listItem);
+                .appendTo(listItem).click(function() {
+                  window.open(snp.link);
+                  return false;
+                });
             if (snp.position) {
               $('<div>').text('chr ' + snp.chr + ' at ' + xFormat(snp.position))
                   .appendTo(listItem);
@@ -258,7 +261,7 @@ var readgraph = new function() {
     return null;
   };
 
-  var jumpToPosition = function(position, chr, baseView, displayName) {
+  var jumpToPosition = function(position, chr, baseView, snp) {
     if (chr) {
       // Update our sequence
       var sequence = fuzzyFindSequence(chr);
@@ -278,9 +281,10 @@ var readgraph = new function() {
       return;
     }
 
-    positionIndicator.attr('position', baseView ? position : -1);
+    positionIndicator.attr('position', baseView ? position : -1)
+        .attr('snp', snp || '').attr('loaded', '');
     positionIndicator.selectAll('text')
-        .text(baseView ? (displayName || xFormat(position)) : '');
+        .text(baseView ? (snp || xFormat(position)) : '');
 
     var zoomLevel = baseView ? maxZoom : maxZoom / zoomLevelChange; // Read level
     if (zoom.scale() != zoomLevel) {
@@ -428,9 +432,42 @@ var readgraph = new function() {
           .attr("y", function(data, i) {
             return y(data.ry) + textHeight/2;
           });
-      var indicatorX = x(positionIndicator.attr('position')) + textWidth/2 - 2;
+      var position = positionIndicator.attr('position');
+      var indicatorX = x(position) + textWidth/2 - 2;
       positionIndicator.attr('transform', 'translate(' + indicatorX + ',0)');
+
+      var snp = positionIndicator.attr('snp');
+      var loaded = positionIndicator.attr('loaded');
+      if (!loaded && snp && readStats[position]) {
+        positionIndicator.attr('loaded', true);
+        var alleles = getAlleles(snp, readStats[position]);
+        $.getJSON('api/alleles', alleles).done(function(res) {
+          if (res.summary) {
+            var text = positionIndicator.selectAll('text').text(res.name + " ");
+            text.append('a').attr('xlink:href', res.link)
+                .attr('target', '_blank')
+                .text(res.repute + ' - ' + res.summary);
+          }
+        });
+      }
     }
+  };
+
+  var getAlleles = function(snp, stats) {
+    var counts = _.countBy(stats);
+
+    // First strip out low values
+    var totalCount = _.reduce(counts, function(memo, key) {
+      return memo + key;
+    }, 0);
+    var minCount = totalCount * .2;
+    var bases = _.compact(_.map(counts, function(key, value) {
+      return key > minCount ? value : '';
+    }));
+
+    var a1 = bases[0];
+    var a2 = bases.length == 1 ? a1 : bases[1];
+    return {'snp': snp, 'a1': a1, 'a2': a2};
   };
 
   var toggleVisibility = function(items, visible) {

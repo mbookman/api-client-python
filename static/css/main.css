@@ -113,6 +113,10 @@ svg {
   fill-opacity: .1;
 }
 
+.positionIndicator a {
+  fill: #428bca;
+}
+
 .zoomGroup rect {
   fill: white;
 }

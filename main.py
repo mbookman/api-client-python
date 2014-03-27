@@ -168,8 +168,7 @@ class ReadSearchHandler(BaseRequestHandler):
     self.get_content("reads/search", body=body)
 
 
-class SnpSearchHandler(webapp2.RequestHandler):
-
+class BaseSnpediaHandler(webapp2.RequestHandler):
   def getSnppediaPageContent(self, snp):
     uri = "http://bots.snpedia.com/api.php?action=query&prop=revisions&" \
           "format=json&rvprop=content&titles=%s" % snp
@@ -178,17 +177,22 @@ class SnpSearchHandler(webapp2.RequestHandler):
     page_id, page = json.loads(content)['query']['pages'].popitem()
     return page['revisions'][0]['*']
 
-  def getSnpResponse(self, snp, content):
-    response = {
-      'name': snp,
-      'link': 'http://www.snpedia.com/index.php/%s' % snp
-    }
+  def getContentValue(self, content, key):
     try:
-      response['position'] = re.search('position=(.*)\n', content, re.I).group(1)
-      response['chr'] = re.search('chromosome=(.*)\n', content, re.I).group(1)
+      matcher = '%s=(.*)\n' % key
+      return re.search(matcher, content, re.I).group(1)
     except (KeyError, AttributeError):
-      pass # Ignore parse failures
-    return response
+      return ''
+
+class SnpSearchHandler(BaseSnpediaHandler):
+
+  def getSnpResponse(self, name, content):
+    return {
+      'name': name,
+      'link': 'http://www.snpedia.com/index.php/%s' % name,
+      'position': self.getContentValue(content, 'position'),
+      'chr': self.getContentValue(content, 'chromosome')
+    }
 
   def get(self):
     snp = self.request.get('snp')
@@ -206,6 +210,35 @@ class SnpSearchHandler(webapp2.RequestHandler):
     except (ValueError, KeyError, AttributeError):
       snps = []
     self.response.write(json.dumps({'snps' : snps}))
+
+
+class AlleleSearchHandler(BaseSnpediaHandler):
+
+  def getAlleleResponse(self, name, content):
+    return {
+      'name': name,
+      'link': 'http://www.snpedia.com/index.php/%s' % name,
+      'repute': self.getContentValue(content, 'repute'),
+      'summary': self.getContentValue(content, 'summary'),
+      'magnitude': self.getContentValue(content, 'magnitude')
+    }
+
+  def get(self):
+    snp = self.request.get('snp')
+    a1 = self.request.get('a1')
+    a2 = self.request.get('a2')
+
+    possible_names = [(snp, a1, a2), (snp, a2, a1)] # TODO: A -> T mapping?
+    for name in possible_names:
+      try:
+        page = "%s(%s;%s)" % name
+        content = self.getSnppediaPageContent(page)
+        self.response.write(json.dumps(self.getAlleleResponse(page, content)))
+        return
+      except (ValueError, KeyError, AttributeError):
+        pass # Continue trying the next allele name
+
+    self.response.write(json.dumps({}))
 
 
 class MainHandler(webapp2.RequestHandler):
@@ -232,6 +265,7 @@ web_app = webapp2.WSGIApplication(
      ('/api/reads', ReadSearchHandler),
      ('/api/readsets', ReadsetSearchHandler),
      ('/api/snps', SnpSearchHandler),
+     ('/api/alleles', AlleleSearchHandler),
      (decorator.callback_path, decorator.callback_handler()),
     ],
     debug=True)
