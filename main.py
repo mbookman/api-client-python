@@ -140,7 +140,7 @@ class ReadsetSearchHandler(BaseRequestHandler):
     if not readset_id:
       # Temporary requirements to satisfy each backend
       if backend == 'GOOGLE':
-        body = {'datasetIds': ['383928317087']}
+        body = {'datasetIds': ['383928317087', '376902546192']}
       elif backend == 'NCBI':
         body = {'datasetIds': ['SRP034507']}
       else:
@@ -183,6 +183,9 @@ class BaseSnpediaHandler(webapp2.RequestHandler):
       return re.search(matcher, content, re.I).group(1)
     except (KeyError, AttributeError):
       return ''
+
+  def complement(self, base):
+    return {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}[base]
 
 class SnpSearchHandler(BaseSnpediaHandler):
 
@@ -228,7 +231,10 @@ class AlleleSearchHandler(BaseSnpediaHandler):
     a1 = self.request.get('a1')
     a2 = self.request.get('a2')
 
-    possible_names = [(snp, a1, a2), (snp, a2, a1)] # TODO: A -> T mapping?
+    a1c = self.complement(a1)
+    a2c = self.complement(a2)
+    possible_names = [(snp, a1, a2), (snp, a2, a1),
+                      (snp, a1c, a2c), (snp, a2c, a1c)]
     for name in possible_names:
       try:
         page = "%s(%s;%s)" % name
