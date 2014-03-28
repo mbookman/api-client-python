@@ -92,7 +92,8 @@ function searchReadsets(button) {
   }
 
   var readsetsPerPage = 10;
-  $.getJSON('/api/readsets', {'backend': backend, 'datasetId': datasetId})
+  $.getJSON('/api/readsets', {'backend': backend, 'datasetId': datasetId,
+      'name': $('#readsetName').val()})
       .done(function(res) {
         div.empty();
 
@@ -121,7 +122,7 @@ function searchReadsets(button) {
           pagination.bootpag({
             page: 1,
             total: totalPages,
-            maxVisible: 5
+            maxVisible: 10
           }).on("page", function(event, newPage) {
             $('#readsetResults .list-group-item').hide();
             getItemsOnPage(newPage).show();

@@ -136,8 +136,10 @@ class BaseRequestHandler(webapp2.RequestHandler):
         raise ApiException(content['error']['message'])
       else:
         raise ApiException('Something went wrong with the API call!')
+    return content
 
-    self.response.write(json.dumps(content))
+  def write_content(self, path, method='POST', body=None):
+    self.response.write(json.dumps(self.get_content(path, method, body)))
 
 
 class ReadsetSearchHandler(BaseRequestHandler):
@@ -147,16 +149,25 @@ class ReadsetSearchHandler(BaseRequestHandler):
     readset_id = self.request.get('readsetId')
     if not readset_id:
       dataset_id = self.request.get('datasetId')
+      name = self.request.get('name')
       if dataset_id:
         body = {'datasetIds' : [dataset_id]}
       else:
         # This is needed for the local readstore
         body = {'datasetIds' : []}
-      self.get_content("readsets/search?fields=readsets(id,name)", body=body)
+      response = self.get_content("readsets/search?fields=readsets(id,name)",
+                                 body=body)
+
+      # TODO: Use the api once name filtering is supported
+      if name:
+        name = name.lower()
+        response['readsets'] = [r for r in response['readsets']
+                                if name in r['name'].lower()]
+      self.response.write(json.dumps(response))
       return
 
     # Single readset response
-    self.get_content("readsets/%s" % readset_id, method='GET')
+    self.write_content("readsets/%s" % readset_id, method='GET')
 
 
 class ReadSearchHandler(BaseRequestHandler):
@@ -172,7 +183,7 @@ class ReadSearchHandler(BaseRequestHandler):
     pageToken = self.request.get('pageToken')
     if pageToken:
       body['pageToken'] = pageToken
-    self.get_content("reads/search", body=body)
+    self.write_content("reads/search", body=body)
 
 
 class BaseSnpediaHandler(webapp2.RequestHandler):

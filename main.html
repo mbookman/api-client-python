@@ -114,7 +114,10 @@ limitations under the License.
               </select>
             {% endfor %}
           </div>
-          <button type="button" class="btn btn-primary" onclick="return searchReadsets(this)">Search</button>
+          <div class="form-group">
+            <input type="text" class="form-control" placeholder="name" id="readsetName"/>
+          </div>
+          <button type="submit" class="btn btn-primary" onclick="return searchReadsets(this)">Search</button>
         </form>
         <div id="readsetResults" class="list-group">
           <img src="static/img/spinner.gif"/>
