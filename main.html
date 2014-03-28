@@ -96,13 +96,23 @@ limitations under the License.
       <div class="modal-body">
         <form class="form-inline" style="margin-bottom: 10px">
           <div class="form-group">
-            <select class="form-control" id="backend" style="min-width: 200px">
+            <select class="form-control" id="backend">
               {% for backend, data in backends.iteritems() %}
                 <option value="{{ backend }}">
                      {{ data.name }}
                 </option>
               {% endfor %}
             </select>
+          </div>
+          <div class="form-group">
+            {% for backend, data in backends.iteritems() %}
+              <!-- TODO: Simplify this -->
+              <select class="form-control datasetSelector" id="datasetId{{ backend }}">
+              {% for dataset, datasetId in data.datasets.iteritems() %}
+                  <option value="{{ datasetId }}"> {{ dataset }} </option>
+                {% endfor %}
+              </select>
+            {% endfor %}
           </div>
           <button type="button" class="btn btn-primary" onclick="return searchReadsets(this)">Search</button>
         </form>

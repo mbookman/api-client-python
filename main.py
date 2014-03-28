@@ -71,13 +71,22 @@ else:
       pass
   decorator = FakeOauthDecorator()
 
+# TODO: Dataset information should come from the list datasets api call
 SUPPORTED_BACKENDS = {
-  'NCBI' : {'name' : 'NCBI', 'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg'},
-  'LOCAL' : {'name' : 'Local', 'url': 'http://localhost:5000'},
+  'NCBI' : {'name': 'NCBI',
+            'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg',
+            'datasets': {'SRP034507': 'SRP034507', 'SRP029392': 'SRP029392'}},
+  'LOCAL' : {'name': 'Local',
+             'url': 'http://localhost:5000',
+             'datasets': {'All': ''}},
 }
 if REQUIRE_OAUTH:
   # Google temporarily requires OAuth on all calls
-  SUPPORTED_BACKENDS['GOOGLE'] = {'name' : 'Google', 'url': 'https://www.googleapis.com/genomics/v1beta'}
+  SUPPORTED_BACKENDS['GOOGLE'] = {
+    'name': 'Google',
+    'url': 'https://www.googleapis.com/genomics/v1beta',
+    'datasets': {'1000 Genomes': '376902546192', 'PGP': '383928317087'}
+  }
 
 
 class ApiException(Exception):
@@ -136,14 +145,12 @@ class ReadsetSearchHandler(BaseRequestHandler):
   @decorator.oauth_aware
   def get(self):
     readset_id = self.request.get('readsetId')
-    backend = self.get_backend()
     if not readset_id:
-      # Temporary requirements to satisfy each backend
-      if backend == 'GOOGLE':
-        body = {'datasetIds': ['383928317087', '376902546192']}
-      elif backend == 'NCBI':
-        body = {'datasetIds': ['SRP034507']}
+      dataset_id = self.request.get('datasetId')
+      if dataset_id:
+        body = {'datasetIds' : [dataset_id]}
       else:
+        # This is needed for the local readstore
         body = {'datasetIds' : []}
       self.get_content("readsets/search?fields=readsets(id,name)", body=body)
       return
@@ -187,6 +194,7 @@ class BaseSnpediaHandler(webapp2.RequestHandler):
   def complement(self, base):
     return {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}[base]
 
+
 class SnpSearchHandler(BaseSnpediaHandler):
 
   def getSnpResponse(self, name, content):
@@ -222,7 +230,7 @@ class AlleleSearchHandler(BaseSnpediaHandler):
       'name': name,
       'link': 'http://www.snpedia.com/index.php/%s' % name,
       'repute': self.getContentValue(content, 'repute'),
-      'summary': self.getContentValue(content, 'summary'),
+      'summary': self.getContentValue(content, 'summary') or 'Unknown',
       'magnitude': self.getContentValue(content, 'magnitude')
     }
 

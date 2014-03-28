@@ -85,13 +85,14 @@ function searchReadsets(button) {
 
   var div = $('#readsetResults').html('<img src="static/img/spinner.gif"/>');
   var backend = $('#backend').val();
+  var datasetId = $('#datasetId' + backend).val();
 
   function getItemsOnPage(page) {
     return $('#readsetResults .list-group-item[page=' + page + ']');
   }
 
   var readsetsPerPage = 10;
-  $.getJSON('/api/readsets', {'backend' : backend})
+  $.getJSON('/api/readsets', {'backend': backend, 'datasetId': datasetId})
       .done(function(res) {
         div.empty();
 
@@ -167,15 +168,19 @@ function handleHash() {
 // Show the about popup when the page loads, read the hash,
 // and prep the initial readset search
 $(document).ready(function() {
-  $("#about").modal('show');
+  $('#about').modal('show');
 
   $(document).ajaxError(function(e, xhr) {
-    showError("Sorry, the api request failed for some reason. " +
-        "(" + xhr.responseText + ")");
+    showError('Sorry, the api request failed for some reason. ' +
+        '(' + xhr.responseText + ')');
   });
-
 
   $(window).on('hashchange', handleHash);
   handleHash();
+
+  $('#backend').change(function() {
+    $('.datasetSelector').hide();
+    $('#datasetId' + $(this).val()).show()
+  }).change();
   searchReadsets();
 });
