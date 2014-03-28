@@ -562,6 +562,10 @@ var readgraph = new function() {
     if (readDiv) {
       readDiv.hide();
     }
+    if (positionIndicator) {
+      toggleVisibility(positionIndicator, false);
+    }
+    readStats = {};
   };
 
   var setReads = function(reads) {
