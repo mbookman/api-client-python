@@ -56,7 +56,6 @@ if USE_APPENGINE and REQUIRE_OAUTH:
       client_secrets,
       scope=[
         'https://www.googleapis.com/auth/genomics',
-        'https://www.googleapis.com/auth/devstorage.read_write'
       ])
 else:
   class FakeOauthDecorator():
