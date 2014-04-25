@@ -37,8 +37,9 @@ Enabling the Google API
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 If you want to pull in data from `Google Genomics API`_ you will need to set
-``REQUIRE_OAUTH = True`` in ``main.py``. OAuth only works when app engine is
-enabled, so be sure to set ``USE_APPENGINE=True`` as well.
+``REQUIRE_OAUTH=True`` in ``main.py``. OAuth only works when App Engine is
+enabled, so be sure to set ``USE_APPENGINE=True`` as well. 
+See the above section for more details.
 
 You will also need to follow the `authentication instructions
 <https://developers.google.com/genomics#authenticate>`_ to generate a valid
