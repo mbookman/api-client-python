@@ -94,3 +94,37 @@ site.
 .. _D3: http://d3js.org
 .. _Underscore.js: http://underscorejs.org
 .. _Bootstrap: http://getbootstrap.com
+
+
+Project status
+--------------
+
+Goals
+~~~~~
+* Provide an easily deployable demo that demonstrates what Genomics API interop
+  can achieve for the community.
+* Provide an example of how to use the Genomics APIs and OAuth to build a
+  non-trivial python application.
+
+
+Current status
+~~~~~~~~~~~~~~
+This code _wants_ to be in active development, but has few contributions coming
+in at the moment.
+
+Currently, it provides a basic genome browser that can consume genomic data
+from any API provider. It deploys on App Engine (to meet the
+'easily deployable' goal), and has a layman-friendly UI.
+
+Awesome possible features include:
+
+* Incorporating variant data into the UI.
+* Add more information to the read display (show inserts, highlight mismatches
+  against the reference, etc)
+* Possibly cleaning up the js code to be more plugin friendly - so that pieces
+  could be shared and reused (d3 library? jquery plugin?)
+* Staying up to date on API changes (readset name filtering can now be handled
+  by the API, and readset searching now has pagination, etc)
+* Better searching of Snpedia (or another provider)
+* Other enhancement ideas are very welcome
+* (for smaller/additional tasks see the GitHub issues)
