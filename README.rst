@@ -109,7 +109,7 @@ Goals
 
 Current status
 ~~~~~~~~~~~~~~
-This code _wants_ to be in active development, but has few contributions coming
+This code *wants* to be in active development, but has few contributions coming
 in at the moment.
 
 Currently, it provides a basic genome browser that can consume genomic data
