@@ -84,7 +84,8 @@ if REQUIRE_OAUTH:
   SUPPORTED_BACKENDS['GOOGLE'] = {
     'name': 'Google',
     'url': 'https://www.googleapis.com/genomics/v1beta',
-    'datasets': {'1000 Genomes': '376902546192', 'PGP': '383928317087'}
+    'datasets': {'1000 Genomes': '376902546192', 'PGP': '383928317087',
+                 'Simons Foundation' : '461916304629'}
   }
 
 
