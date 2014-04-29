@@ -16,12 +16,18 @@ Running on App Engine
 ~~~~~~~~~~~~~~~~~~~~~
 
 To run with app engine, you'll need to `set up a Google App Engine environment
-<https://developers.google.com/appengine/docs/python/gettingstartedpython27/introduction>`_.
+<https://developers.google.com/appengine/docs/python/gettingstartedpython27/introduction>`_. 
+(which basically means just install the SDK or one of the helper apps)
 
 Then, set ``USE_APPENGINE=True`` in the top of ``main.py``.
 
-Run the app engine app locally and visit ``http://localhost:8080`` to browse data
-from the API.
+Run the app engine app locally::
+
+  cd api-client-python
+  dev_appserver.py .
+
+and visit ``http://localhost:8080`` to browse data from the API.
+
 
 Running with paste and webapp2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
