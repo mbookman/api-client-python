@@ -27,7 +27,7 @@ If you are ready to contribute code, Github provides a nice `overview on how to 
 
 Some general rules to follow:
 
-* Do your work in `a fork <https://help.github.com/articles/fork-a-repo>`_ of the genomics-tools repo.
+* Do your work in `a fork <https://help.github.com/articles/fork-a-repo>`_ of this repo.
 * Create a branch for each update that you're working on. 
   These branches are often called "feature" or "topic" branches. Any changes
   that you push to your feature branch will automatically be shown in the pull request.
