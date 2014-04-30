@@ -52,6 +52,9 @@ You will also need to follow the `authentication instructions
 ``client_secrets.json`` file. However, for this application you want to generate
 secrets for a *Web Application* rather than a *Native Application*.
 
+Be sure to add ``http://localhost:8080/oauth2callback`` as an ``Authorized redirect URI`` 
+when configuring the client ID.
+
 Replace the ``client_secrets.json`` file in this directory with your new secrets
 file.
 
