@@ -58,6 +58,14 @@ when configuring the client ID.
 Replace the ``client_secrets.json`` file in this directory with your new secrets
 file.
 
+Troubleshooting
+~~~~~~~~~~~~~~~
+
+* If you see an ``Error: redirect_uri_mismatch`` message when trying to grant OAuth access to 
+  your local server that means you need to `update the Authorized redirect URIs <http://stackoverflow.com/questions/20732266/authenticate-with-google-oauth-2-0-did-not-match-a-registered-redirect-uri>`_ 
+  for your Client ID.
+  
+
 Code layout
 -----------
 
