@@ -21,7 +21,7 @@ To run with app engine, you'll need to download and install `Google App Engine S
 Then, set ``USE_APPENGINE=True`` in the top of ``main.py``.
 
 On Mac OS X you can setup and run the application through the GoogleAppEngineLauncher UI. 
-To use the command line or to run on Linux:
+To use the command line or to run on Linux::
 
   cd api-client-python
   dev_appserver.py .
