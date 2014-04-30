@@ -42,7 +42,7 @@ if USE_APPENGINE:
   from google.appengine.api import memcache
 
 socket.setdefaulttimeout(60)
-http = httplib2.Http(cache=memcache if USE_APPENGINE else None)
+http = httplib2.Http(timeout=60, cache=memcache if USE_APPENGINE else None)
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -75,6 +75,9 @@ SUPPORTED_BACKENDS = {
   'NCBI' : {'name': 'NCBI',
             'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg',
             'datasets': {'SRP034507': 'SRP034507', 'SRP029392': 'SRP029392'}},
+  'EBI' : {'name': 'EBI',
+            'url': 'http://193.62.52.16',
+            'datasets': {'All data': 'data'}},
   'LOCAL' : {'name': 'Local',
              'url': 'http://localhost:5000',
              'datasets': {'All': ''}},
