@@ -15,19 +15,20 @@ It can be run with app engine or without.
 Running on App Engine
 ~~~~~~~~~~~~~~~~~~~~~
 
-To run with app engine, you'll need to `set up a Google App Engine environment
-<https://developers.google.com/appengine/docs/python/gettingstartedpython27/introduction>`_. 
-(which basically means just install the SDK or one of the helper apps)
+To run with app engine, you'll need to download and install `Google App Engine SDK for Python
+<https://developers.google.com/appengine/downloads>`_. 
 
 Then, set ``USE_APPENGINE=True`` in the top of ``main.py``.
 
-Run the app engine app locally::
+On Mac OS X you can setup and run the application through the GoogleAppEngineLauncher UI. 
+To use the command line or to run on Linux:
 
   cd api-client-python
   dev_appserver.py .
   
-On Windows you may need to run the dev_appserver like this::
+To run on Windows::
 
+  cd api-client-python
   python c:\path\to\dev_appserver.py .
 
 Once running, visit ``http://localhost:8080`` in your browser to browse data from the API.
