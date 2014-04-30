@@ -575,9 +575,9 @@ var readgraph = new function() {
     $.each(reads, function(readi, read) {
       // Interpret the cigar
       // TODO: Compare the read against a reference as well
-      if (!read.id) {
-        read.id = read.name + read.position + read.cigar;
-      }
+
+      // TODO: Nobody is handing back actually unique ids right now
+      read.id = (read.id || read.name) + read.position + read.cigar;
       if (readIds[read.id]) {
         showError('There is more than one read with the ID ' + read.id +
             ' - this will cause display problems');
