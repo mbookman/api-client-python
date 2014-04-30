@@ -25,8 +25,12 @@ Run the app engine app locally::
 
   cd api-client-python
   dev_appserver.py .
+  
+On Windows you may need to run the dev_appserver like this::
 
-and visit ``http://localhost:8080`` to browse data from the API.
+  python c:\path\to\dev_appserver.py .
+
+Once running, visit ``http://localhost:8080`` in your browser to browse data from the API.
 
 
 Running with paste and webapp2
