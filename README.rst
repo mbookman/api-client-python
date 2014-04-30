@@ -76,7 +76,7 @@ Troubleshooting
 
   python dev_appserver.py --port 12080 --admin_port=12000 .
   
- Your server will then be available at ``localhost:12080``.
+Your server will then be available at ``localhost:12080``.
 
 Code layout
 -----------
