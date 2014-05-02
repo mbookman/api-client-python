@@ -87,6 +87,7 @@ if REQUIRE_OAUTH:
   SUPPORTED_BACKENDS['GOOGLE'] = {
     'name': 'Google',
     'url': 'https://www.googleapis.com/genomics/v1beta',
+    'supportsNameFilter': True,
     'datasets': {'1000 Genomes': '376902546192',
                  'DREAM SMC Challenge': '337315832689',
                  'PGP': '383928317087',
@@ -117,6 +118,9 @@ class BaseRequestHandler(webapp2.RequestHandler):
     if not backend:
       raise ApiException('Backend parameter must be set')
     return backend
+
+  def supports_name_filter(self):
+    return SUPPORTED_BACKENDS[self.get_backend()].has_key('supportsNameFilter')
 
   def get_base_api_url(self):
     return SUPPORTED_BACKENDS[self.get_backend()]['url']
@@ -160,11 +164,14 @@ class ReadsetSearchHandler(BaseRequestHandler):
       else:
         # This is needed for the local readstore
         body = {'datasetIds' : []}
+
+      if self.supports_name_filter():
+        body['name'] = name
+
       response = self.get_content("readsets/search?fields=readsets(id,name)",
                                  body=body)
 
-      # TODO: Use the api once name filtering is supported
-      if name:
+      if not self.supports_name_filter() and name:
         name = name.lower()
         response['readsets'] = [r for r in response['readsets']
                                 if name in r['name'].lower()]
