@@ -137,9 +137,23 @@ function searchReadsets(button) {
 
 
 // Hash functions
+function setAnchor(map) {
+  window.location.hash = $.param(map);
+}
+
+function getAnchorMap() {
+  var hashParts = window.location.hash.substring(1).split('&');
+  var map = {};
+  for (var i = 0; i < hashParts.length; i++) {
+    var option = decodeURIComponent(hashParts[i]).split('=');
+    map[option[0]] = option[1]
+  }
+
+  return map;
+}
 
 function switchToReadset(backend, id) {
-  $.uriAnchor.setAnchor({
+  setAnchor({
     backend: backend,
     readsetId: id
   });
@@ -147,12 +161,12 @@ function switchToReadset(backend, id) {
 }
 
 function switchToLocation(location) {
-  var state = _.extend($.uriAnchor.makeAnchorMap(), {'location': location});
-  $.uriAnchor.setAnchor(state);
+  var state = _.extend(getAnchorMap(), {'location': location});
+  setAnchor(state);
 }
 
 function handleHash() {
-  var state = $.uriAnchor.makeAnchorMap();
+  var state = getAnchorMap();
   if (state.backend) {
     $("#backend").val(state.backend);
     if (state.readsetId) {

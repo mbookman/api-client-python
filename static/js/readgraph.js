@@ -204,50 +204,59 @@ var readgraph = new function() {
     spinner.style('display', 'none');
   };
 
+  var chrLocation = /^(.*):(\d*)$/;
   this.jumpGraph = function(location) {
     var jumpResults = $("#jumpResults").empty();
-    var position = parseInt(location.replace(/,/g, ''));
-    if (position > 0) {
-      // Numbered positions
-      jumpToPosition(position, null, true);
 
-    } else {
-      // Queried locations
-      showMessage('Looking up location: ' + location);
-
-      $.getJSON('api/snps', {snp: location}).done(function(res) {
-        if (res.snps.length == 0) {
-          showMessage('Could not find location: ' + location);
-
-        } else {
-          $.each(res.snps, function(i, snp) {
-            var listItem = $('<a/>', {'href': '#', 'class': 'list-group-item'})
-                .appendTo(jumpResults).click(function() {
-                  if (snp.position) {
-                    jumpToPosition(snp.position, snp.chr, true, snp.name);
-                  } else {
-                    showMessage('Could not find a position for this snp.' +
-                        ' Check SNPedia for more information.');
-                  }
-                  return false;
-                });
-            $('<span>', {'class': 'title'}).text(snp.name + ' ')
-                .appendTo(listItem);
-            $('<a>', {'href': snp.link, 'target': '_blank'}).text('SNPedia')
-                .appendTo(listItem).click(function() {
-                  window.open(snp.link);
-                  return false;
-                });
-            if (snp.position) {
-              $('<div>').text('chr ' + snp.chr + ' at ' + xFormat(snp.position))
-                  .appendTo(listItem);
-            }
-          });
-
-          $("#jumpResults .list-group-item").click();
-        }
-      });
+    // Locations of the form chr:position
+    if (chrLocation.test(location)) {
+      var matches = chrLocation.exec(location);
+      jumpToPosition(parseInt(matches[2].replace(/,/g, '')), matches[1], true);
+      return;
     }
+
+    var position = parseInt(location.replace(/,/g, ''));
+    // Numbered locations
+    if (position > 0) {
+      jumpToPosition(position, null, true);
+      return;
+    }
+
+    // Queried locations
+    showMessage('Looking up location: ' + location);
+
+    $.getJSON('api/snps', {snp: location}).done(function(res) {
+      if (res.snps.length == 0) {
+        showMessage('Could not find location: ' + location);
+
+      } else {
+        $.each(res.snps, function(i, snp) {
+          var listItem = $('<a/>', {'href': '#', 'class': 'list-group-item'})
+              .appendTo(jumpResults).click(function() {
+                if (snp.position) {
+                  jumpToPosition(snp.position, snp.chr, true, snp.name);
+                } else {
+                  showMessage('Could not find a position for this snp.' +
+                      ' Check SNPedia for more information.');
+                }
+                return false;
+              });
+          $('<span>', {'class': 'title'}).text(snp.name + ' ')
+              .appendTo(listItem);
+          $('<a>', {'href': snp.link, 'target': '_blank'}).text('SNPedia')
+              .appendTo(listItem).click(function() {
+                window.open(snp.link);
+                return false;
+              });
+          if (snp.position) {
+            $('<div>').text('chr ' + snp.chr + ' at ' + xFormat(snp.position))
+                .appendTo(listItem);
+          }
+        });
+
+        $("#jumpResults .list-group-item").click();
+      }
+    });
   };
 
   var fuzzyFindSequence = function(chr) {
@@ -271,7 +280,7 @@ var readgraph = new function() {
         return;
       }
 
-      selectSequence(sequence, true);
+      selectSequence(sequence);
     }
 
     var currentLength = currentSequence['length'];
@@ -311,7 +320,7 @@ var readgraph = new function() {
     return 'sequence-' + name.replace(/[\|\.]/g, '');
   };
 
-  var selectSequence = function(sequence, opt_skipJumping) {
+  var selectSequence = function(sequence) {
     currentSequence = sequence;
     $('.sequence').removeClass('active');
     var div = $('#' + sequenceId(sequence.name)).addClass('active');
@@ -336,15 +345,6 @@ var readgraph = new function() {
     zoom.x(x).scaleExtent([1, maxZoom]).size([width, height]);
 
     $('#jumpDiv').show();
-    if (opt_skipJumping) {
-      return;
-    }
-
-    handleZoom();
-
-    // Zoom into a given position because the overall zoom isn't supported
-    var initialPosition = currentSequence['length'] / 2;
-    jumpToPosition(initialPosition);
   };
 
   var makeImageUrl = function(name) {
@@ -384,7 +384,7 @@ var readgraph = new function() {
       $('<div>', {'class': 'summary'}).text(summary).appendTo(sequenceDiv);
 
       sequenceDiv.click(function() {
-        selectSequence(sequence);
+        switchToLocation(sequence.name + ":" + Math.floor(sequence['length'] / 2));
       });
     });
 
