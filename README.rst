@@ -16,9 +16,7 @@ Running on App Engine
 ~~~~~~~~~~~~~~~~~~~~~
 
 To run with app engine, you'll need to download and install `Google App Engine SDK for Python
-<https://developers.google.com/appengine/downloads>`_. 
-
-Then, set ``USE_APPENGINE=True`` in the top of ``main.py``.
+<https://developers.google.com/appengine/downloads>`_.
 
 On Mac OS X you can setup and run the application through the GoogleAppEngineLauncher UI. 
 To use the command line or to run on Linux::
@@ -37,6 +35,7 @@ Once running, visit ``http://localhost:8080`` in your browser to browse data fro
 Running with paste and webapp2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+If you don't want to use App Engine, you can instead run the local server with paste.
 First you'll need to `install pip <http://www.pip-installer.org/en/latest/installing.html>`_.
 
 Then install the required dependencies and run the ``localserver.py`` file::

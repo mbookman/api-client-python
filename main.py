@@ -22,10 +22,6 @@ This file serves two main purposes
 # backend will be enabled.
 GOOGLE_API_KEY = None
 
-# If this is set to true, then this file will assume that app engine is
-# being used to run the server.
-USE_APPENGINE = False
-
 import httplib2
 import jinja2
 import json
@@ -35,11 +31,8 @@ import re
 import socket
 import webapp2
 
-if USE_APPENGINE:
-  from google.appengine.api import memcache
-
 socket.setdefaulttimeout(60)
-http = httplib2.Http(timeout=60, cache=memcache if USE_APPENGINE else None)
+http = httplib2.Http(timeout=60)
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
