@@ -110,7 +110,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
 
     if response.status >= 300:
       logging.error("error api response %s" % response)
-      logging.error("error api content %s" % content[:1000])
+      logging.error("error api content %s" % content)
       if 'error' in content:
         raise ApiException(content['error']['message'])
       else:
