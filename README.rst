@@ -48,27 +48,35 @@ Enabling the Google API
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 If you want to pull in data from `Google Genomics API`_ you will need to set
-``REQUIRE_OAUTH=True`` in ``main.py``. OAuth only works when App Engine is
-enabled, so be sure to set ``USE_APPENGINE=True`` as well. 
-See the above section for more details.
+``API_KEY`` in ``main.py`` to a valid Google API key.
 
-You will also need to follow the `authentication instructions
-<https://developers.google.com/genomics#authenticate>`_ to generate a valid
-``client_secrets.json`` file. However, for this application you want to generate
-secrets for a *Web Application* rather than a *Native Application*.
+* First apply for access to the Genomics API by following the instructions at
+  https://developers.google.com/genomics/
 
-Be sure to add ``http://localhost:8080/oauth2callback`` as an ``Authorized redirect URI`` 
-when configuring the client ID.
+* Then create a project in the
+  `Google Developers Console <https://console.developers.google.com>`_
+  or select an existing one.
 
-Replace the ``client_secrets.json`` file in this directory with your new secrets
-file.
+* On the **APIs & auth** tab, select APIs and turn the Genomics API to ON
+
+* On the **Credentials** tab, click **create new key** under
+  the Public API access section.
+
+* Select **Server key** in the dialog that pops up, and then click **Create**.
+  (You don't need to enter anything in the text box)
+
+* Copy the **API key** field value that now appears in the Public API access
+  section into the top of ``main.py``. It should look something like this::
+
+    API_KEY = "abcdef12345abcdef"
+
+
+Note: You can also reuse an existing API key if you have one.
+Just make sure the Genomics API is turned on.
+
 
 Troubleshooting
 ~~~~~~~~~~~~~~~
-
-* If you see an ``Error: redirect_uri_mismatch`` message when trying to grant OAuth access to 
-  your local server that means you need to `update the Authorized redirect URIs <http://stackoverflow.com/questions/20732266/authenticate-with-google-oauth-2-0-did-not-match-a-registered-redirect-uri>`_ 
-  for your Client ID.
   
 * The ``google.appengine.tools.devappserver2.wsgi_server.BindError: Unable to bind`` message 
   means that one of the default App Engine ports is unavailable. The default ports are 8080 and 8000. 
@@ -100,11 +108,8 @@ static/js/readgraph.js:
 
 The python client also depends on several external libraries:
 
-`oauth2client`_:
-  provides a python decorator which handles the entire OAuth user flow
-
 `httplib2`_:
-  is required by the OAuth library
+  used to fetch data from API providers
 
 `D3`_:
   is a javascript library used to make rich visualizations
@@ -118,7 +123,6 @@ The python client also depends on several external libraries:
 In ``main.html``, `jQuery <http://jquery.com>`_ is also loaded from an external
 site.
 
-.. _oauth2client: https://code.google.com/p/google-api-python-client/wiki/OAuth2Client
 .. _httplib2: https://github.com/jcgregorio/httplib2
 .. _D3: http://d3js.org
 .. _Underscore.js: http://underscorejs.org

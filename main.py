@@ -18,10 +18,9 @@ This file serves two main purposes
 - and it provides a simple set of apis to the javascript
 """
 
-# If this is set to true, the client_secrets.json must be valid and users will
-# be required to grant OAuth access to this app before continuing.
-# This enables the Google API to work
-REQUIRE_OAUTH = False
+# If this is set to a valid API key string, then the Google
+# backend will be enabled.
+GOOGLE_API_KEY = None
 
 # If this is set to true, then this file will assume that app engine is
 # being used to run the server.
@@ -37,8 +36,6 @@ import socket
 import webapp2
 
 if USE_APPENGINE:
-  from oauth2client import appengine
-  from google.appengine.api import users
   from google.appengine.api import memcache
 
 socket.setdefaulttimeout(60)
@@ -49,44 +46,25 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     autoescape=True,
     extensions=['jinja2.ext.autoescape'])
 
-client_secrets = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
-
-if USE_APPENGINE and REQUIRE_OAUTH:
-  decorator = appengine.oauth2decorator_from_clientsecrets(
-      client_secrets,
-      scope=[
-        'https://www.googleapis.com/auth/genomics',
-      ])
-else:
-  class FakeOauthDecorator():
-    def http(self):
-      return http
-    def oauth_aware(self, method):
-      return method
-    @property
-    def callback_path(self):
-      return '/unused'
-    def callback_handler(self):
-      pass
-  decorator = FakeOauthDecorator()
-
 # TODO: Dataset information should come from the list datasets api call
 SUPPORTED_BACKENDS = {
   'NCBI' : {'name': 'NCBI',
-            'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg',
+            'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg/%s?%s',
             'datasets': {'SRP034507': 'SRP034507', 'SRP029392': 'SRP029392'}},
   'EBI' : {'name': 'EBI',
-            'url': 'http://193.62.52.16',
+            'url': 'http://193.62.52.16/%s?%s',
             'datasets': {'All data': 'data'}},
   'LOCAL' : {'name': 'Local',
-             'url': 'http://localhost:5000',
+             'url': 'http://localhost:5000/%s?%s',
              'datasets': {'All': ''}},
 }
-if REQUIRE_OAUTH:
-  # Google temporarily requires OAuth on all calls
+
+if GOOGLE_API_KEY:
+  # Google requires a valid API key
   SUPPORTED_BACKENDS['GOOGLE'] = {
     'name': 'Google',
-    'url': 'https://www.googleapis.com/genomics/v1beta',
+    'url': 'https://www.googleapis.com/genomics/v1beta/%s?key='
+           + GOOGLE_API_KEY + "&%s",
     'supportsNameFilter': True,
     'datasets': {'1000 Genomes': '376902546192',
                  'DREAM SMC Challenge': '337315832689',
@@ -125,22 +103,21 @@ class BaseRequestHandler(webapp2.RequestHandler):
   def get_base_api_url(self):
     return SUPPORTED_BACKENDS[self.get_backend()]['url']
 
-  def get_content(self, path, method='POST', body=None):
-    http = decorator.http()
+  def get_content(self, path, method='POST', body=None, params=""):
     response, content = http.request(
-      uri="%s/%s" % (self.get_base_api_url(), path),
+      uri= self.get_base_api_url() % (path, params),
       method=method, body=json.dumps(body) if body else None,
       headers={'Content-Type': 'application/json; charset=UTF-8'})
 
     try:
       content = json.loads(content)
     except ValueError:
-      logging.error("non-json api content %s" % content)
+      logging.error("non-json api content %s" % content[:1000])
       raise ApiException('The API returned invalid JSON')
 
     if response.status >= 300:
       logging.error("error api response %s" % response)
-      logging.error("error api content %s" % content)
+      logging.error("error api content %s" % content[:1000])
       if 'error' in content:
         raise ApiException(content['error']['message'])
       else:
@@ -153,7 +130,6 @@ class BaseRequestHandler(webapp2.RequestHandler):
 
 class ReadsetSearchHandler(BaseRequestHandler):
 
-  @decorator.oauth_aware
   def get(self):
     readset_id = self.request.get('readsetId')
     if not readset_id:
@@ -168,8 +144,8 @@ class ReadsetSearchHandler(BaseRequestHandler):
       if self.supports_name_filter():
         body['name'] = name
 
-      response = self.get_content("readsets/search?fields=readsets(id,name)",
-                                 body=body)
+      response = self.get_content("readsets/search", body=body,
+                                  params="fields=readsets(id,name)")
 
       if not self.supports_name_filter() and name:
         name = name.lower()
@@ -184,7 +160,6 @@ class ReadsetSearchHandler(BaseRequestHandler):
 
 class ReadSearchHandler(BaseRequestHandler):
 
-  @decorator.oauth_aware
   def get(self):
     body = {
       'readsetIds': self.request.get('readsetIds').split(','),
@@ -280,21 +255,11 @@ class AlleleSearchHandler(BaseSnpediaHandler):
 
 class MainHandler(webapp2.RequestHandler):
 
-  @decorator.oauth_aware
   def get(self):
-    if not REQUIRE_OAUTH or decorator.has_credentials():
-      template = JINJA_ENVIRONMENT.get_template('main.html')
-      self.response.write(template.render({
-        'username': users.User().nickname() if USE_APPENGINE else '',
-        'logout_url': users.create_logout_url('/') if USE_APPENGINE else '',
-        'backends': SUPPORTED_BACKENDS,
-      }))
-    else:
-      # TODO: What kind of access do the non-google backends need?
-      template = JINJA_ENVIRONMENT.get_template('grantaccess.html')
-      self.response.write(template.render({
-        'url': decorator.authorize_url()
-      }))
+    template = JINJA_ENVIRONMENT.get_template('main.html')
+    self.response.write(template.render({
+      'backends': SUPPORTED_BACKENDS,
+    }))
 
 web_app = webapp2.WSGIApplication(
     [
@@ -303,6 +268,5 @@ web_app = webapp2.WSGIApplication(
      ('/api/readsets', ReadsetSearchHandler),
      ('/api/snps', SnpSearchHandler),
      ('/api/alleles', AlleleSearchHandler),
-     (decorator.callback_path, decorator.callback_handler()),
     ],
     debug=True)
