@@ -9,6 +9,8 @@ This Python client provides a simple web application which fetches data from the
 interface.
 
 It can be run with app engine or without.
+See `the docs <google-genomics.readthedocs.org/en/latest/api-client-python>`_
+for more information.
 
 .. _Google Genomics Api: https://developers.google.com/genomics
 
