@@ -203,7 +203,6 @@ function searchSetsOfType(button, setType, backend, datasetId) {
       }).always(function() {
         button && button.button('reset');
       });
-  return false;
 }
 
 
