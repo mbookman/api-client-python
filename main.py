@@ -153,11 +153,17 @@ class SetSearchHandler(BaseRequestHandler):
 
     # Single object response
     if use_callsets:
-      # TODO: Use GET /callsets/id and GET /variants/summary
-      response = {'id' : set_id, 'name' : set_id, 'contigs': [
-        {'name' : '22', 'length': 51304566}
-      ]}
-      self.response.write(json.dumps(response))
+      callset = self.get_content('%s/%s' % (set_type, set_id), method="GET")
+
+      # For callsets, we also load up the variant summary data to get
+      # the available contigs and lengths
+      dataset_id = callset['datasetId']
+      summary = self.get_content('variants/summary', method="GET",
+                                 params='datasetId=%s' % dataset_id)
+
+      callset['contigs'] = [{'name': b['contig'], 'length': b['upperBound']}
+                            for b in summary['contigBounds']]
+      self.response.write(json.dumps(callset))
       return
 
     self.write_content('%s/%s' % (set_type, set_id), method='GET')
