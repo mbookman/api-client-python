@@ -50,6 +50,7 @@ limitations under the License.
 #sequences .sequence .title {
   white-space: normal;
   word-wrap: break-word;
+  display: inline-block;
 }
 
 #sequences .sequence .summary {
@@ -60,19 +61,32 @@ limitations under the License.
   color: white;
 }
 
-#readDiv h4 {
+#sequences .sequence .badge {
+  background-color: #ddd;
+}
+
+#sequences .sequence.active .badge {
+  background-color: white;
+  color: #428bca;
+}
+
+.infoDiv h4 {
   word-wrap: break-word;
 }
 
-#readsetSearch .modal-body {
+#setSearch .modal-body {
   padding-bottom: 0;
 }
 
-#readsetPagination {
+#setSearch .results {
+  padding-top: .75em;
+}
+
+.paginationContainer {
   text-align: center;
 }
 
-#readsetPagination ul {
+.paginationContainer ul {
   margin: 0;
 }
 
@@ -96,7 +110,7 @@ limitations under the License.
 svg {
   margin-top: 20px;
   width: 100%;
-  height: 800px;
+  height: 800px; /* Height is updated in readgraph.js */
   display: none;
 }
 .axis line,

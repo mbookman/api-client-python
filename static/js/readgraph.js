@@ -19,7 +19,7 @@ var readgraph = new function() {
 
   var width = 0;
   var height = 800;
-  var margin = 30;
+  var margin = 40;
 
   var textHeight, textWidth = 0;
 
@@ -37,15 +37,38 @@ var readgraph = new function() {
   var unsupportedMessage = null;
 
   // Current state
-  var readsetIds = [];
-  var readsetBackend = null;
-  var sequences = null;
+  // Format: {id, type, backend, sequences}
+  var setObjects = [];
+  var mergedSequences = [];
   var currentSequence = null;
   var readStats = {}; // Map from position to stat information
   var xhrTimeout = null;
 
+  var readTrackLength = 0;
+  var callsetTrackLength = 0;
+
   // Dom elements
-  var svg, positionIndicator, readGroup, readDiv, spinner = null;
+  var svg, axisGroup, readGroup, readDiv, variantDiv, spinner = null;
+  var hoverline, positionIndicator, positionIndicatorBg, positionIndicatorText;
+
+  var updateHeight = function() {
+    var totalTracks = readTrackLength + callsetTrackLength;
+    height = totalTracks * textHeight + 100;
+    height = Math.max(height, 450);
+
+    y.range([margin, height - margin*2]).domain([totalTracks, -1]);
+    $('#graph').height(height);
+
+    // TODO: Reduce duplicate height setting code
+    axisGroup.attr('transform', 'translate(0,' + (height - margin) + ')');
+    positionIndicatorBg.attr('height', height - margin);
+    positionIndicatorText.attr('y', height - margin - textHeight);
+    hoverline.attr("y2", height);
+
+    zoom.size([width, height]);
+
+    return totalTracks;
+  };
 
   var getScaleLevel = function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
@@ -91,11 +114,12 @@ var readgraph = new function() {
     minRange = (width / textWidth / 2); // Twice the zoom of individual bases
 
     readDiv = $('#readDiv');
+    variantDiv = $('#variantDiv');
 
 
     // Svg init
     // Reads Axis
-    svg.append('g')
+    axisGroup = svg.append('g')
         .attr('transform', 'translate(0,' + (height - margin) + ')')
         .attr('class', 'axis');
 
@@ -104,7 +128,7 @@ var readgraph = new function() {
         width/2, height/4);
 
     // Hover line
-    var hoverline = svg.append("line")
+    hoverline = svg.append("line")
         .attr("class", "hover hoverline")
         .attr("x1", 0).attr("x2", 0)
         .attr("y1", 0).attr("y2", height);
@@ -144,11 +168,11 @@ var readgraph = new function() {
     positionIndicator = svg.append('g')
         .attr('transform', 'translate(0,0)')
         .attr('class', 'axis');
-    positionIndicator.append('rect')
+    positionIndicatorBg = positionIndicator.append('rect')
         .attr('class', 'positionIndicator background')
         .attr('x', 0).attr('y', 0)
         .attr('width', textWidth * 1.5).attr('height', height - margin);
-    positionIndicator.append('text')
+    positionIndicatorText = positionIndicator.append('text')
         .attr('class', 'positionIndicator text')
         .attr('x', 3)
         .attr('y', height - margin - textHeight);
@@ -260,12 +284,12 @@ var readgraph = new function() {
   };
 
   var fuzzyFindSequence = function(chr) {
-    var actualNames = _.pluck(sequences, 'name');
+    var actualNames = _.pluck(mergedSequences, 'name');
     var possibleNames = [chr, "chr" + chr];
     possibleNames = _.intersection(actualNames, possibleNames);
 
     if (possibleNames.length > 0) {
-      return _.findWhere(sequences, {name: possibleNames[0]});
+      return _.findWhere(mergedSequences, {name: possibleNames[0]});
     }
     return null;
   };
@@ -275,7 +299,7 @@ var readgraph = new function() {
       // Update our sequence
       var sequence = fuzzyFindSequence(chr);
       if (!sequence) {
-        showError('This readset doesn\'t have the sequence ' + chr +
+        showError('This data doesn\'t have the sequence ' + chr +
           '. Please try a different position.');
         return;
       }
@@ -351,10 +375,17 @@ var readgraph = new function() {
     return '/static/img/' + name + '.png';
   };
 
+  var getSequenceName = function(sequence) {
+    return sequence.name;
+  };
+
   var updateSequences = function() {
     var sequencesDiv = $("#sequences").empty();
+    var allSequences = _.flatten(_.pluck(setObjects, 'sequences'));
+    var indexedSequences = _.countBy(allSequences, getSequenceName);
+    mergedSequences = _.uniq(allSequences, false, getSequenceName);
 
-    $.each(sequences, function(i, sequence) {
+    $.each(mergedSequences, function(i, sequence) {
       var title, imageUrl;
 
       if (sequence.name.indexOf('X') != -1) {
@@ -374,6 +405,7 @@ var readgraph = new function() {
       }
 
       var summary = xFormat(sequence['length']) + " bases";
+      var setCount = indexedSequences[sequence.name];
 
       var sequenceDiv = $('<div/>', {'class': 'sequence',
         id: sequenceId(sequence.name)}).appendTo(sequencesDiv);
@@ -381,6 +413,10 @@ var readgraph = new function() {
         $('<img>', {'class': 'pull-left', src: imageUrl}).appendTo(sequenceDiv);
       }
       $('<div>', {'class': 'title'}).text(title).appendTo(sequenceDiv);
+      if (setObjects.length != setCount) {
+        $('<div>', {'class': 'badge pull-right'}).text(setCount)
+          .appendTo(sequenceDiv);
+      }
       $('<div>', {'class': 'summary'}).text(summary).appendTo(sequenceDiv);
 
       sequenceDiv.click(function() {
@@ -391,7 +427,9 @@ var readgraph = new function() {
     $('#jumpDiv').show();
   };
 
-  var updateDisplay = function(opt_skipReadQuery) {
+  var updateDisplay = function(opt_skipDataQuery) {
+    var maxY = updateHeight();
+
     var scaleLevel = getScaleLevel();
     var summaryView = scaleLevel < 2;
     var coverageView = scaleLevel == 2 || scaleLevel == 3;
@@ -399,6 +437,7 @@ var readgraph = new function() {
     var baseView = scaleLevel > 5;
 
     var reads = readGroup.selectAll(".read");
+    var variants = readGroup.selectAll(".variant");
     var outlines = reads.selectAll(".outline");
     var letters = reads.selectAll(".letter");
 
@@ -406,12 +445,13 @@ var readgraph = new function() {
     toggleVisibility(outlines, readView);
     toggleVisibility(letters, baseView);
     toggleVisibility(positionIndicator, baseView);
+    toggleVisibility(variants, baseView);
 
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
 
-    if (!opt_skipReadQuery && (readView || baseView)) {
-      queryReads(sequenceStart, sequenceEnd);
+    if (!opt_skipDataQuery && (readView || baseView)) {
+      queryData(sequenceStart, sequenceEnd);
     }
 
     // TODO: Bring back coverage and summary views
@@ -419,6 +459,7 @@ var readgraph = new function() {
       outlines.attr("points", outlinePoints);
 
     } else if (baseView) {
+      // Read bases
       letters.style('display', function(data, i) {
             if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
               return 'none';
@@ -432,10 +473,13 @@ var readgraph = new function() {
           .attr("y", function(data, i) {
             return y(data.ry) + textHeight/2;
           });
+
+      // Red position highlight box
       var position = positionIndicator.attr('position');
       var indicatorX = x(position) + textWidth/2 - 2;
       positionIndicator.attr('transform', 'translate(' + indicatorX + ',0)');
 
+      // Read base stats
       var snp = positionIndicator.attr('snp');
       var loaded = positionIndicator.attr('loaded');
       if (!loaded && snp && readStats[position]) {
@@ -450,6 +494,21 @@ var readgraph = new function() {
           }
         });
       }
+
+      // Variants
+      variants.style('display', function(data, i) {
+            if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
+              return 'none';
+            } else {
+              return 'block';
+            }
+          })
+          .attr("x", function(data, i) {
+            return x(data.rx);
+          })
+          .attr("y", function(data, i) {
+            return y(maxY - data.ry) + textHeight/2;
+          });
     }
   };
 
@@ -520,30 +579,45 @@ var readgraph = new function() {
     return stringifyPoints(points);
   };
 
-  // Read details
+  // Hover details
+  var addField = function(dl, title, field) {
+    if (field) {
+      $("<dt/>").text(title).appendTo(dl);
+      $("<dd/>").text(field).appendTo(dl);
+    }
+  };
+
   var showRead = function(read, i) {
     readDiv.empty().show();
 
     $("<h4/>").text("Read: " + read.name).appendTo(readDiv);
     var dl = $("<dl/>").addClass("dl").appendTo(readDiv);
 
-    var addField = function(title, field) {
-      if (field) {
-        $("<dt/>").text(title).appendTo(dl);
-        $("<dd/>").text(field).appendTo(dl);
-      }
-    };
-
-    addField("Position", read.position);
-    addField("Length", read.length);
-    addField("Mate position", read.matePosition);
-    addField("Mapping quality", read.mappingQuality);
-    addField("Cigar", read.cigar);
+    addField(dl, "Position", read.position);
+    addField(dl, "Length", read.length);
+    addField(dl, "Mate position", read.matePosition);
+    addField(dl, "Mapping quality", read.mappingQuality);
+    addField(dl, "Cigar", read.cigar);
 
     d3.select(this).classed("selected", true);
   };
 
-  var hideRead = function(read, i) {
+  var showVariant = function(data) {
+    variantDiv.empty().show();
+    var variant = data.variant;
+    var call = variant.calls[data.callIndex];
+
+    $("<h4/>").text("Variant: " + variant.names.join(", "))
+      .appendTo(variantDiv);
+    var dl = $("<dl/>").addClass("dl").appendTo(variantDiv);
+
+    addField(dl, "Callset name", call.callsetName);
+    addField(dl, "Position", variant.position);
+
+    d3.select(this).classed("selected", true);
+  };
+
+  var deselectObject = function(read, i) {
     d3.select(this).classed("selected", false);
   };
 
@@ -555,17 +629,57 @@ var readgraph = new function() {
     }
   };
 
-  var clearReads = function() {
-    if (readGroup) {
-      readGroup.selectAll('.read').remove();
+  var getGenotype = function(variant, call) {
+
+    // TODO: Switch to genotype field when its ready
+    var genotype = [];
+    var splits = call.info["GT"][0].split(/[|\/]/);
+    for (var g = 0; g < splits.length; g++) {
+      var allele = splits[g];
+      if (allele == 0) {
+        genotype.push(variant.referenceBases);
+      } else {
+        genotype.push(variant.alternateBases[allele - 1]);
+      }
     }
-    if (readDiv) {
-      readDiv.hide();
-    }
-    if (positionIndicator) {
-      toggleVisibility(positionIndicator, false);
-    }
-    readStats = {};
+
+    return genotype;
+  };
+
+  var setVariants = function(variants) {
+    var data = [];
+    var maxCalls = 0;
+
+    $.each(variants, function(i, variant) {
+      maxCalls = Math.max(variant.calls.length, maxCalls);
+
+      $.each(variant.calls, function(callIndex, call) {
+        data.push({
+          id: variant.id + call.callsetId,
+          rx: variant.position,
+          ry: callIndex,
+          genotype: getGenotype(variant, call).join(";"),
+          variant: variant,
+          callIndex: callIndex
+          // TODO: Use likelihood for opacity
+        });
+      });
+
+    });
+
+    var variantDivs = readGroup.selectAll(".variant").data(data,
+        function(data){ return data.id; });
+
+    variantDivs.enter().append("text")
+        .attr('class', 'variant')
+        .text(function(data, i) { return data.genotype; })
+        .on("mouseover", showVariant)
+        .on("mouseout", deselectObject);
+
+    variantDivs.exit().remove();
+
+    callsetTrackLength = maxCalls;
+    updateDisplay(true);
   };
 
   var setReads = function(reads) {
@@ -661,7 +775,7 @@ var readgraph = new function() {
       yTracks.push(read.end);
     });
 
-    y.domain([yTracks.length, -1]);
+    readTrackLength = yTracks.length;
 
     readGroup.selectAll('.read').remove();
     if (reads.length == 0) {
@@ -676,7 +790,7 @@ var readgraph = new function() {
         .attr('class', 'read')
         .attr('index', function(read, i) { return read.index; })
         .on("mouseover", showRead)
-        .on("mouseout", hideRead);
+        .on("mouseout", deselectObject);
 
     var outlines = reads.selectAll('.outline')
         .data(function(read, i) { return [read];});
@@ -698,44 +812,60 @@ var readgraph = new function() {
   };
 
   var makeQueryParams = function(sequenceStart, sequenceEnd, type) {
+    var sets = _.where(setObjects, {type: type});
+    if (sets.length == 0) {
+      return null;
+    }
+
+    var setIds = _.pluck(sets, 'id');
+    var setBackends = _.uniq(_.pluck(sets, 'backend'));
+    if (setBackends.length > 1) {
+      showError("Currently all sets of the same type " +
+        "must be from the same backend");
+      return null;
+    }
+
     var queryParams = {};
-    queryParams.readsetIds = readsetIds.join(',');
-    queryParams.backend = readsetBackend;
-    queryParams.type = type;
+    queryParams.setIds = setIds.join(',');
+    queryParams.backend = setBackends[0];
     queryParams.sequenceName = currentSequence.name;
     queryParams.sequenceStart = parseInt(sequenceStart);
     queryParams.sequenceEnd = parseInt(sequenceEnd);
     return queryParams;
   };
 
-  var queryReads = function(sequenceStart, sequenceEnd) {
-    queryApi(sequenceStart, sequenceEnd, 'reads', setReads);
-  };
-
-  // TODO: Make this cleaner
-  var queryApi = function(sequenceStart, sequenceEnd, type, handler) {
-    var queryParams = makeQueryParams(sequenceStart, sequenceEnd, type);
+  var queryData = function(start, end) {
+    var readParams = makeQueryParams(start, end, READSET_TYPE);
+    var variantParams = makeQueryParams(start, end, CALLSET_TYPE);
 
     if (xhrTimeout) {
       clearTimeout(xhrTimeout);
     }
 
     xhrTimeout = setTimeout(function() {
-      callXhr('/api/reads', queryParams, handler);
+      if (readParams) {
+        callXhr('/api/reads', readParams, setReads);
+      } else {
+        setReads([]);
+      }
+      if (variantParams) {
+        callXhr('/api/variants', variantParams, setVariants);
+      } else {
+        setVariants([]);
+      }
     }, 500);
   };
 
-  var callXhr = function(url, queryParams, handler, opt_reads) {
+  var callXhr = function(url, queryParams, handler, opt_data) {
     spinner.style('display', 'block');
     $.getJSON(url, queryParams)
         .done(function(res) {
-          lastQueryParams = queryParams;
-          var reads = (opt_reads || []).concat(res.reads || []);
-          handler(reads);
+          var data = (opt_data || []).concat(res.reads || res.variants || []);
+          handler(data);
 
           if (res.nextPageToken) {
             queryParams['pageToken'] = res.nextPageToken;
-            callXhr(url, queryParams, handler, reads);
+            callXhr(url, queryParams, handler, data);
           } else {
             spinner.style('display', 'none');
           }
@@ -745,30 +875,28 @@ var readgraph = new function() {
         });
   };
 
-  this.hasReadset = function(id) {
-    return $.inArray(id, readsetIds) != -1;
-  };
+  this.getCurrentSequence = function() {
+    return currentSequence.name;
+  }
 
-  // TODO: Support multiple readsets
-  this.addReadset = function(backend, id, sequenceData) {
-    readsetBackend = backend;
-    readsetIds = [id];
-    if (readsetIds.length == 1) {
-      sequences = sequenceData;
-      updateSequences();
-      $('#chooseReadsetMessage').hide();
-      clearReads();
+  this.updateSets = function(setData) {
+    if (_.isEqual(setObjects, setData)) {
+      return;
     }
-  };
 
-  this.removeReadset = function(id) {
-    readsetIds = _.without(readsetIds, id);
-    if (readsetIds.length == 0) {
-      sequences = [];
-      updateSequences();
-      $('#chooseReadsetMessage').show();
+    setObjects = setData;
+    updateSequences();
+
+    if (setObjects.length == 0) {
+      $('#chooseSetMessage').show();
       $('#graph').hide();
       $('#jumpDiv').hide();
+
+      readDiv && readDiv.hide();
+      variantDiv && variantDiv.hide();
+
+    } else {
+      $('#chooseSetMessage').hide();
     }
-  }
+  };
 };

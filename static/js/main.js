@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+var CALLSET_TYPE = "CALLSET";
+var READSET_TYPE = "READSET";
+
 function toggleUi(clazz, link) {
   $(".toggleable").hide();
   $("." + clazz).show();
@@ -46,72 +49,140 @@ function closeButton() {
   return $('<button type="button" class="close" aria-hidden="true">&times;</button>');
 }
 
-function addReadset(backend, id, opt_location) {
-  if (readgraph.hasReadset(id)) {
-    if (opt_location) {
-      readgraph.jumpGraph(opt_location);
-    }
-    return;
+var loadedSetData = {};
+function loadSet(backend, readsetIds, callsetIds, opt_location, setType, id) {
+  if (_.has(loadedSetData, id)) {
+    return false;
   }
-  showMessage('Loading readset');
 
-  $.getJSON('/api/readsets', {'backend' : backend, 'readsetId': id})
-      .done(function(res) {
-        readgraph.addReadset(backend, id, res.fileData[0].refSequences);
-        if (opt_location) {
-          readgraph.jumpGraph(opt_location);
-        }
-
-        // TODO: Get this data from a better location
-        var backendName = $('#backend option[value=' + backend + ']').text().trim();
-        var name = backendName + ": " + res.name;
-
-        var readsetList = $('#activeReadsets').empty();
-        var li = $('<li>', {'id': 'readset-' + id, 'class': 'list-group-item'})
-            .text(name).appendTo(readsetList);
-        closeButton().appendTo(li).click(function() {
-          li.remove();
-          readgraph.removeReadset(id);
-          return false;
-        });
-      });
+  showMessage('Loading data');
+  
+  $.getJSON('/api/sets', {backend: backend, setType: setType, setId: id})
+    .done(function(res) {
+      var sequenceData = res.contigs || res.fileData[0].refSequences;
+      loadedSetData[id] = {id: id, name: res.name, type: setType,
+        backend: backend, sequences: sequenceData};
+      updateSets(backend, readsetIds, callsetIds, opt_location);
+    });
+  return true;
 }
 
-function searchReadsets(button) {
+function updateSets(backend, readsetIds, callsetIds, opt_location) {
+  // Load missing readsets
+  for (var i = 0; i < readsetIds.length; i++) {
+    if (loadSet(backend, readsetIds, callsetIds, opt_location, READSET_TYPE, readsetIds[i])) {
+      // Wait for the set to callback
+      return;
+    }
+  }
+
+  // Load missing callsets
+  for (var j = 0; j < callsetIds.length; j++) {
+    if (loadSet(backend, readsetIds, callsetIds, opt_location, CALLSET_TYPE, callsetIds[j])) {
+      // Wait for the set to callback
+      return;
+    }
+  }
+
+  // TODO: Get this data from a better location
+  // TODO: Allow data from different backends to be loaded at the same time
+  var backendName = $('#backend option[value=' + backend + ']').text().trim();
+
+  updateListItems(backendName, READSET_TYPE, readsetIds, loadedSetData);
+  updateListItems(backendName, CALLSET_TYPE, callsetIds, loadedSetData);
+
+  // Update readgraph with new sets
+  var setData = _.filter(loadedSetData, function(data) {
+    return (_.contains(readsetIds, data.id) && data.type == READSET_TYPE) ||
+      (_.contains(callsetIds, data.id) && data.type == CALLSET_TYPE);
+  });
+
+  readgraph.updateSets(setData);
+  if (setData.length > 0 && opt_location) {
+    readgraph.jumpGraph(opt_location);
+  }
+}
+
+function updateListItems(backendName, setType, ids, loadedSetData) {
+  $('#' + setType + 'Title').toggle(ids.length > 0);
+  var setList = $('#active' + setType).empty();
+
+  $.each(ids, function(i, id) {
+    var name = loadedSetData[id].name;
+
+    var li = $('<li>', {'id': setType + '-' + id, 'class': 'list-group-item'})
+      .appendTo(setList);
+
+    closeButton().appendTo(li).click(function() {
+      removeSet(id, setType);
+      return false;
+    });
+
+    var displayName = backendName + ": " + name;
+    $('<div/>', {'class': 'setName'}).text(displayName).appendTo(li);
+  });
+}
+
+function searchSets(button) {
   if (button) {
     button = $(button);
     button.button('loading');
   }
 
-  var div = $('#readsetResults').html('<img src="static/img/spinner.gif"/>');
   var backend = $('#backend').val();
-  var datasetId = $('#datasetId' + backend).val();
+  var datasetSelector = $('#datasetId' + backend);
+  var datasetId = datasetSelector.val();
+  var supportsCallsets = datasetSelector.attr("supportsCallsets");
+
+  searchSetsOfType(button, READSET_TYPE, backend, datasetId);
+
+  $("#CALLSETTab").toggleClass("disabled", !supportsCallsets);
+  if (supportsCallsets) {
+    searchSetsOfType(button, CALLSET_TYPE, backend, datasetId);
+  } else {
+    // Make sure the readset tab is selected
+    $("#READSETTab").click();
+  }
+}
+
+function setSearchTab(setType) {
+  $('.tab-pane').hide();
+  $('.nav-tabs li').removeClass("active");
+  $('#' + setType + 'Tab').addClass('active');
+  $('#searchPane' + setType).show();
+}
+
+function searchSetsOfType(button, setType, backend, datasetId) {
+  var tabPane = $('#searchPane' + setType);
+  var div = tabPane.find('.results')
+    .html('<img src="static/img/spinner.gif"/>');
 
   function getItemsOnPage(page) {
-    return $('#readsetResults .list-group-item[page=' + page + ']');
+    return div.find('.list-group-item[page=' + page + ']');
   }
 
-  var readsetsPerPage = 10;
-  $.getJSON('/api/readsets', {'backend': backend, 'datasetId': datasetId,
-      'name': $('#readsetName').val()})
+  var setsPerPage = 10;
+  $.getJSON('/api/sets', {'backend': backend, 'datasetId': datasetId,
+      'setType': setType, 'name': $('#setName').val()})
       .done(function(res) {
         div.empty();
 
-        var pagination = $('#readsetPagination');
+        var pagination = tabPane.find('.paginationContainer');
         pagination.hide();
 
-        if (!res.readsets) {
-          div.html('No readsets found');
+        var sets = res.readsets || res.callsets;
+        if (!sets) {
+          div.html('No data found');
           return;
         }
 
-        var totalPages = Math.ceil(res.readsets.length / readsetsPerPage);
+        var totalPages = Math.ceil(sets.length / setsPerPage);
 
-        $.each(res.readsets, function(i, data) {
-          var page = Math.floor(i / readsetsPerPage) + 1;
+        $.each(sets, function(i, data) {
+          var page = Math.floor(i / setsPerPage) + 1;
           $('<a/>', {'href': '#', 'class': 'list-group-item', 'page': page})
               .text(data.name).appendTo(div).click(function() {
-            switchToReadset(backend, data.id);
+            switchToSet(backend, setType, data.id);
             return false;
           }).hide();
         });
@@ -124,7 +195,7 @@ function searchReadsets(button) {
             total: totalPages,
             maxVisible: 10
           }).on("page", function(event, newPage) {
-            $('#readsetResults .list-group-item').hide();
+            div.find('.list-group-item').hide();
             getItemsOnPage(newPage).show();
           });
         }
@@ -138,26 +209,55 @@ function searchReadsets(button) {
 
 // Hash functions
 function setAnchor(map) {
-  window.location.hash = $.param(map);
+  window.location.hash = $.param(map, true);
 }
 
+var arrayKeys = ['readsetId', 'callsetId'];
 function getAnchorMap() {
   var hashParts = window.location.hash.substring(1).split('&');
   var map = {};
   for (var i = 0; i < hashParts.length; i++) {
     var option = decodeURIComponent(hashParts[i]).split('=');
-    map[option[0]] = option[1]
+    var key = option[0];
+    var value = option[1];
+
+    if (!_.contains(arrayKeys, key)) {
+      map[key] = value;
+    } else if (map[key]) {
+      map[key].push(value);
+    } else {
+      map[key] = [value];
+    }
   }
 
   return map;
 }
 
-function switchToReadset(backend, id) {
-  setAnchor({
-    backend: backend,
-    readsetId: id
-  });
-  $('#readsetSearch').modal('hide');
+function removeSet(id, setType) {
+  var state = getAnchorMap();
+  var key = setType == READSET_TYPE ? 'readsetId' : 'callsetId';
+  state[key] = _.without(state[key], id);
+  if (state[key].length == 0) {
+    delete state[key];
+  }
+  setAnchor(state);
+}
+
+function switchToSet(backend, setType, id) {
+  var state = getAnchorMap();
+  var key = setType == READSET_TYPE ? 'readsetId' : 'callsetId';
+
+  if (setType == READSET_TYPE) {
+    state[key] = [id];
+  } else {
+    state[key] = (state[key] || []);
+    state[key].push(id);
+  }
+
+  // TODO: Support multiple backends at once
+  state.backend = backend;
+  setAnchor(state);
+  $('#setSearch').modal('hide');
 }
 
 function switchToLocation(location) {
@@ -165,23 +265,29 @@ function switchToLocation(location) {
   setAnchor(state);
 }
 
+function updateUserLocation(location) {
+  switchToLocation(readgraph.getCurrentSequence() + ":" + location);
+}
+
 function handleHash() {
   var state = getAnchorMap();
   if (state.backend) {
     $("#backend").val(state.backend);
-    if (state.readsetId) {
-      addReadset(state.backend, state.readsetId, state.location);
 
-      if (state.location) {
-        $("#readsetPosition").val(state.location);
-      }
+    updateSets(state.backend, (state.readsetId || []).slice(0, 1),
+      state.callsetId || [], state.location);
+    if (state.location) {
+      // Strip off the chromosome prefix
+      var colonIndex = state.location.indexOf(":");
+      var location = state.location.substring(colonIndex + 1);
+      $("#readsetPosition").val(location);
     }
   }
 }
 
 
 // Show the about popup when the page loads, read the hash,
-// and prep the initial readset search
+// and prep the initial set search
 $(document).ready(function() {
   $('#about').modal('show');
 
@@ -195,7 +301,21 @@ $(document).ready(function() {
 
   $('#backend').change(function() {
     $('.datasetSelector').hide();
-    $('#datasetId' + $(this).val()).show()
+    $('#datasetId' + $(this).val()).show();
   }).change();
-  searchReadsets();
+
+  // TODO: Simplify with general searchTab classes
+  $("#READSETTab").click(function() {
+    setSearchTab(READSET_TYPE);
+    return false;
+  });
+  $("#CALLSETTab").click(function() {
+    if ($(this).hasClass("disabled")) {
+      return false;
+    }
+    setSearchTab(CALLSET_TYPE);
+    return false;
+  });
+
+  searchSets();
 });

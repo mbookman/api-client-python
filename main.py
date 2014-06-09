@@ -57,8 +57,9 @@ if GOOGLE_API_KEY:
   SUPPORTED_BACKENDS['GOOGLE'] = {
     'name': 'Google',
     'url': 'https://www.googleapis.com/genomics/v1beta/%s?key='
-           + GOOGLE_API_KEY + "&%s",
+           + GOOGLE_API_KEY + '&%s',
     'supportsNameFilter': True,
+    #'supportsCallsets': True,
     'datasets': {'1000 Genomes': '376902546192',
                  'DREAM SMC Challenge': '337315832689',
                  'PGP': '383928317087',
@@ -96,7 +97,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
   def get_base_api_url(self):
     return SUPPORTED_BACKENDS[self.get_backend()]['url']
 
-  def get_content(self, path, method='POST', body=None, params=""):
+  def get_content(self, path, method='POST', body=None, params=''):
     response, content = http.request(
       uri= self.get_base_api_url() % (path, params),
       method=method, body=json.dumps(body) if body else None,
@@ -105,12 +106,12 @@ class BaseRequestHandler(webapp2.RequestHandler):
     try:
       content = json.loads(content)
     except ValueError:
-      logging.error("non-json api content %s" % content[:1000])
+      logging.error('non-json api content %s' % content[:1000])
       raise ApiException('The API returned invalid JSON')
 
     if response.status >= 300:
-      logging.error("error api response %s" % response)
-      logging.error("error api content %s" % content)
+      logging.error('error api response %s' % response)
+      logging.error('error api content %s' % content)
       if 'error' in content:
         raise ApiException(content['error']['message'])
       else:
@@ -121,11 +122,14 @@ class BaseRequestHandler(webapp2.RequestHandler):
     self.response.write(json.dumps(self.get_content(path, method, body)))
 
 
-class ReadsetSearchHandler(BaseRequestHandler):
+class SetSearchHandler(BaseRequestHandler):
 
   def get(self):
-    readset_id = self.request.get('readsetId')
-    if not readset_id:
+    use_callsets = self.request.get('setType') == 'CALLSET'
+    set_type = 'callsets' if use_callsets  else 'readsets'
+    set_id = self.request.get('setId')
+
+    if not set_id:
       dataset_id = self.request.get('datasetId')
       name = self.request.get('name')
       if dataset_id:
@@ -137,25 +141,33 @@ class ReadsetSearchHandler(BaseRequestHandler):
       if self.supports_name_filter():
         body['name'] = name
 
-      response = self.get_content("readsets/search", body=body,
-                                  params="fields=readsets(id,name)")
+      response = self.get_content('%s/search' % set_type, body=body,
+                                  params='fields=%s(id,name)' % set_type)
 
       if not self.supports_name_filter() and name:
         name = name.lower()
-        response['readsets'] = [r for r in response['readsets']
+        response[set_type] = [r for r in response[set_type]
                                 if name in r['name'].lower()]
       self.response.write(json.dumps(response))
       return
 
-    # Single readset response
-    self.write_content("readsets/%s" % readset_id, method='GET')
+    # Single object response
+    if use_callsets:
+      # TODO: Use GET /callsets/id and GET /variants/summary
+      response = {'id' : set_id, 'name' : set_id, 'contigs': [
+        {'name' : '22', 'length': 51304566}
+      ]}
+      self.response.write(json.dumps(response))
+      return
+
+    self.write_content('%s/%s' % (set_type, set_id), method='GET')
 
 
 class ReadSearchHandler(BaseRequestHandler):
 
   def get(self):
     body = {
-      'readsetIds': self.request.get('readsetIds').split(','),
+      'readsetIds': self.request.get('setIds').split(','),
       'sequenceName': self.request.get('sequenceName'),
       'sequenceStart': max(0, int(self.request.get('sequenceStart'))),
       'sequenceEnd': int(self.request.get('sequenceEnd')),
@@ -163,7 +175,22 @@ class ReadSearchHandler(BaseRequestHandler):
     pageToken = self.request.get('pageToken')
     if pageToken:
       body['pageToken'] = pageToken
-    self.write_content("reads/search", body=body)
+    self.write_content('reads/search', body=body)
+
+
+class VariantSearchHandler(BaseRequestHandler):
+
+  def get(self):
+    body = {
+      'callsetIds': self.request.get('setIds').split(','),
+      'contig': self.request.get('sequenceName'),
+      'startPosition': max(0, int(self.request.get('sequenceStart'))),
+      'endPosition': int(self.request.get('sequenceEnd')),
+    }
+    pageToken = self.request.get('pageToken')
+    if pageToken:
+      body['pageToken'] = pageToken
+    self.write_content('variants/search', body=body)
 
 
 class BaseSnpediaHandler(webapp2.RequestHandler):
@@ -258,7 +285,8 @@ web_app = webapp2.WSGIApplication(
     [
      ('/', MainHandler),
      ('/api/reads', ReadSearchHandler),
-     ('/api/readsets', ReadsetSearchHandler),
+     ('/api/variants', VariantSearchHandler),
+     ('/api/sets', SetSearchHandler),
      ('/api/snps', SnpSearchHandler),
      ('/api/alleles', AlleleSearchHandler),
     ],
