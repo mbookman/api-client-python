@@ -151,6 +151,10 @@ svg {
   text-anchor: middle;
 }
 
+.variant .outline {
+  stroke: black;
+}
+
 .coverageSummary, .coverage {
   fill: none;
   stroke: black;

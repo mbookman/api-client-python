@@ -438,14 +438,18 @@ var readgraph = new function() {
 
     var reads = readGroup.selectAll(".read");
     var variants = readGroup.selectAll(".variant");
-    var outlines = reads.selectAll(".outline");
-    var letters = reads.selectAll(".letter");
+
+    var readOutlines = reads.selectAll(".outline");
+    var readLetters = reads.selectAll(".letter");
+    var variantOutlines = variants.selectAll(".outline");
+    var variantLetters = variants.selectAll(".letter");
 
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
-    toggleVisibility(outlines, readView);
-    toggleVisibility(letters, baseView);
+    toggleVisibility(readOutlines, readView);
+    toggleVisibility(variantOutlines, readView);
+    toggleVisibility(readLetters, baseView);
+    toggleVisibility(variantLetters, baseView);
     toggleVisibility(positionIndicator, baseView);
-    toggleVisibility(variants, baseView);
 
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
@@ -456,11 +460,19 @@ var readgraph = new function() {
 
     // TODO: Bring back coverage and summary views
     if (readView) {
-      outlines.attr("points", outlinePoints);
+      // Read outlines
+      readOutlines.attr("points", outlinePoints);
+
+      // Variant outlines
+      variantOutlines
+        .attr("x1", function(data) { return x(data.rx) + textWidth; })
+        .attr("x2", function(data) { return x(data.rx) + textWidth; })
+        .attr("y1", function(data) { return y(maxY - data.ry); })
+        .attr("y2", function(data) { return y(maxY - data.ry) + textHeight; });
 
     } else if (baseView) {
       // Read bases
-      letters.style('display', function(data, i) {
+      readLetters.style('display', function(data, i) {
             if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
               return 'none';
             } else {
@@ -496,7 +508,7 @@ var readgraph = new function() {
       }
 
       // Variants
-      variants.style('display', function(data, i) {
+      variantLetters.style('display', function(data, i) {
             if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
               return 'none';
             } else {
@@ -504,7 +516,7 @@ var readgraph = new function() {
             }
           })
           .attr("x", function(data, i) {
-            return x(data.rx);
+            return x(data.rx) + textWidth;
           })
           .attr("y", function(data, i) {
             return y(maxY - data.ry) + textHeight/2;
@@ -670,11 +682,24 @@ var readgraph = new function() {
     var variantDivs = readGroup.selectAll(".variant").data(data,
         function(data){ return data.id; });
 
-    variantDivs.enter().append("text")
+    variantDivs.enter().append("g")
         .attr('class', 'variant')
-        .text(function(data, i) { return data.genotype; })
         .on("mouseover", showVariant)
         .on("mouseout", deselectObject);
+
+    var outlines = variantDivs.selectAll('.outline')
+        .data(function(variant, i) { return [variant];});
+    outlines.enter().append('line').attr('class', 'outline');
+
+    var baseView = getScaleLevel() > 5;
+    if (baseView) {
+      var bases = variantDivs.selectAll(".letter")
+          .data(function(variant, i) { return [variant];});
+
+      bases.enter().append('text')
+          .attr('class', 'letter')
+          .text(function(data, i) { return data.genotype; });
+    }
 
     variantDivs.exit().remove();
 
