@@ -54,13 +54,10 @@ If you want to pull in data from `Google Genomics API`_ you will need to set
 * First apply for access to the Genomics API by following the instructions at
   https://developers.google.com/genomics/
 
-* Then create a project in the
-  `Google Developers Console <https://console.developers.google.com>`_
-  or select an existing one.
+* Then create a `Genomics enabled project <https://console.developers.google.com/flows/enableapi?apiid=genomics>`_ 
+  in the Google Developers Console.
 
-* On the **APIs & auth** tab, select APIs and turn the Genomics API to ON
-
-* On the **Credentials** tab, click **create new key** under
+* Once you are redirected to the **Credentials** tab, click **create new key** under
   the Public API access section.
 
 * Select **Server key** in the dialog that pops up, and then click **Create**.
