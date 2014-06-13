@@ -229,6 +229,9 @@ var readgraph = new function() {
   };
 
   var chrLocation = /^(.*):(\d*)$/;
+
+  // Jumps the graph to the given user-entered position
+  // Returns a bookmarkable position value
   this.jumpGraph = function(location) {
     var jumpResults = $("#jumpResults").empty();
 
@@ -236,14 +239,14 @@ var readgraph = new function() {
     if (chrLocation.test(location)) {
       var matches = chrLocation.exec(location);
       jumpToPosition(parseInt(matches[2].replace(/,/g, '')), matches[1], true);
-      return;
+      return location;
     }
 
     var position = parseInt(location.replace(/,/g, ''));
     // Numbered locations
     if (position > 0) {
       jumpToPosition(position, null, true);
-      return;
+      return currentSequence.name + ":" + position;
     }
 
     // Queried locations
@@ -281,6 +284,7 @@ var readgraph = new function() {
         $("#jumpResults .list-group-item").click();
       }
     });
+    return location;
   };
 
   var fuzzyFindSequence = function(chr) {
@@ -461,7 +465,7 @@ var readgraph = new function() {
     // TODO: Bring back coverage and summary views
     if (readView) {
       // Read outlines
-      readOutlines.attr("points", outlinePoints);
+      readOutlines.attr("points", readOutlinePoints);
 
       // Variant outlines
       variantOutlines
@@ -508,14 +512,7 @@ var readgraph = new function() {
       }
 
       // Variants
-      variantLetters.style('display', function(data, i) {
-            if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
-              return 'none';
-            } else {
-              return 'block';
-            }
-          })
-          .attr("x", function(data, i) {
+      variantLetters.attr("x", function(data, i) {
             return x(data.rx) + textWidth;
           })
           .attr("y", function(data, i) {
@@ -553,7 +550,7 @@ var readgraph = new function() {
     return points.join(' ');
   };
 
-  var outlinePoints = function(read, i) {
+  var readOutlinePoints = function(read, i) {
     var yTracksLength = y.domain()[0];
     var barHeight = Math.min(30, Math.max(2,
         (height - margin * 3) / yTracksLength - 5));
@@ -592,6 +589,22 @@ var readgraph = new function() {
   };
 
   // Hover details
+  var showObject = function(item, div, title, fields) {
+    div.empty().show();
+    closeButton().appendTo(div).click(function() {
+      div.hide();
+    });
+
+    $("<h4/>").text(title).appendTo(div);
+    var dl = $("<dl/>").addClass("dl-horizontal").appendTo(div);
+
+    $.each(fields, function(i, field) {
+      addField(dl, field[0], field[1]);
+    });
+
+    d3.select(item).classed("selected", true);
+  };
+
   var addField = function(dl, title, field) {
     if (field) {
       $("<dt/>").text(title).appendTo(dl);
@@ -599,39 +612,32 @@ var readgraph = new function() {
     }
   };
 
-  var showRead = function(read, i) {
-    readDiv.empty().show();
-
-    $("<h4/>").text("Read: " + read.name).appendTo(readDiv);
-    var dl = $("<dl/>").addClass("dl").appendTo(readDiv);
-
-    addField(dl, "Position", read.position);
-    addField(dl, "Length", read.length);
-    addField(dl, "Mate position", read.matePosition);
-    addField(dl, "Mapping quality", read.mappingQuality);
-    addField(dl, "Cigar", read.cigar);
-
-    d3.select(this).classed("selected", true);
+  var showRead = function(read) {
+    showObject(this, readDiv, "Read: " + read.name, [
+      ["Position", read.position],
+      ["Length", read.length],
+      ["Mate position", read.matePosition],
+      ["Mapping quality", read.mappingQuality],
+      ["Cigar", read.cigar]
+    ]);
   };
 
   var showVariant = function(data) {
-    variantDiv.empty().show();
     var variant = data.variant;
     var call = variant.calls[data.callIndex];
 
-    $("<h4/>").text("Variant: " + variant.names.join(", "))
-      .appendTo(variantDiv);
-    var dl = $("<dl/>").addClass("dl").appendTo(variantDiv);
-
-    addField(dl, "Callset name", call.callsetName);
-    addField(dl, "Position", variant.position);
-
-    d3.select(this).classed("selected", true);
+    showObject(this, variantDiv, "Variant: " + variant.names.join(", "), [
+      ["Callset name", call.callsetName],
+      ["Position", variant.position]
+    ]);
   };
 
   var deselectObject = function(read, i) {
     d3.select(this).classed("selected", false);
   };
+
+
+  // D3 object creation
 
   var setYOrder = function(read, yOrder) {
     read.yOrder = yOrder;
@@ -836,6 +842,9 @@ var readgraph = new function() {
     updateDisplay(true);
   };
 
+
+  // Data loading
+
   var makeQueryParams = function(sequenceStart, sequenceEnd, type) {
     var sets = _.where(setObjects, {type: type});
     if (sets.length == 0) {
@@ -900,10 +909,6 @@ var readgraph = new function() {
         });
   };
 
-  this.getCurrentSequence = function() {
-    return currentSequence.name;
-  }
-
   this.updateSets = function(setData) {
     if (_.isEqual(setObjects, setData)) {
       return;
@@ -916,9 +921,7 @@ var readgraph = new function() {
       $('#chooseSetMessage').show();
       $('#graph').hide();
       $('#jumpDiv').hide();
-
-      readDiv && readDiv.hide();
-      variantDiv && variantDiv.hide();
+      $('.infoDiv').hide();
 
     } else {
       $('#chooseSetMessage').hide();

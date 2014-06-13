@@ -265,7 +265,7 @@ function switchToLocation(location) {
 }
 
 function updateUserLocation(location) {
-  switchToLocation(readgraph.getCurrentSequence() + ":" + location);
+  switchToLocation(readgraph.jumpGraph(location));
 }
 
 function handleHash() {
