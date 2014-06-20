@@ -4,9 +4,11 @@ api-client-python
 Getting started
 ---------------
 
-This Python client provides a simple web application which fetches data from the
+This Python client demonstrates a simple web-based genome browser that fetches data from the 
 `Google Genomics API`_, the NCBI Genomics API or the Local Readstore through a web
-interface.
+interface, and displays a pileup of reads with support for zooming and basic navigation and search.
+
+You can try out the sample genome browser, called GABrowse, now by going to https://gabrowser.appspot.com.
 
 It can be run with app engine or without.
 See `the docs <http://google-genomics.readthedocs.org/en/latest/api-client-python>`_
