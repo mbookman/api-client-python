@@ -151,12 +151,11 @@ from any API provider. It deploys on App Engine (to meet the
 
 Awesome possible features include:
 
-* Incorporating variant data into the UI.
 * Add more information to the read display (show inserts, highlight mismatches
   against the reference, etc)
 * Possibly cleaning up the js code to be more plugin friendly - so that pieces
   could be shared and reused (d3 library? jquery plugin?)
 * Staying up to date on API changes (readset searching now has pagination, etc)
-* Better searching of Snpedia (or another provider)
+* Better searching of Snpedia (or another provider - EBI?)
 * Other enhancement ideas are very welcome
 * (for smaller/additional tasks see the GitHub issues)
