@@ -303,8 +303,6 @@ var readgraph = new function() {
       // Update our sequence
       var sequence = fuzzyFindSequence(chr);
       if (!sequence) {
-        showError('This data doesn\'t have the sequence ' + chr +
-          '. Please try a different position.');
         return;
       }
 
