@@ -53,10 +53,7 @@ Enabling the Google API
 If you want to pull in data from `Google Genomics API`_ you will need to set
 ``API_KEY`` in ``main.py`` to a valid Google API key.
 
-* First apply for access to the Genomics API by following the instructions at
-  https://developers.google.com/genomics/
-
-* Then create a `Genomics enabled project <https://console.developers.google.com/flows/enableapi?apiid=genomics>`_ 
+* First create a `Genomics enabled project <https://console.developers.google.com/flows/enableapi?apiid=genomics>`_ 
   in the Google Developers Console.
 
 * Once you are redirected to the **Credentials** tab, click **create new key** under
