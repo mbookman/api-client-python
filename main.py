@@ -123,8 +123,8 @@ class BaseRequestHandler(webapp2.RequestHandler):
 
     return content
 
-  def write_content(self, path, method='POST', body=None):
-    self.response.write(json.dumps(self.get_content(path, method, body)))
+  def write_content(self, path, method='POST', body=None, params=''):
+    self.response.write(json.dumps(self.get_content(path, method, body, params)))
 
 
 class SetSearchHandler(BaseRequestHandler):
@@ -183,10 +183,14 @@ class ReadSearchHandler(BaseRequestHandler):
       'sequenceStart': max(0, int(self.request.get('sequenceStart'))),
       'sequenceEnd': int(self.request.get('sequenceEnd')),
     }
+    fields = self.request.get('fields')
+    params = ''
+    if fields:
+      params = 'fields=%s' % fields
     pageToken = self.request.get('pageToken')
     if pageToken:
       body['pageToken'] = pageToken
-    self.write_content('reads/search', body=body)
+    self.write_content('reads/search', body=body, params=params)
 
 
 class VariantSearchHandler(BaseRequestHandler):

@@ -865,6 +865,11 @@ var readgraph = new function() {
     queryParams.sequenceName = currentSequence.name;
     queryParams.sequenceStart = parseInt(sequenceStart);
     queryParams.sequenceEnd = parseInt(sequenceEnd);
+    
+    if (type == READSET_TYPE) {
+      queryParams.fields = 'nextPageToken,reads(name,position,matePosition,mappingQuality,baseQuality,cigar,originalBases)'
+    }
+
     return queryParams;
   };
 
