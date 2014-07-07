@@ -752,8 +752,9 @@ var readgraph = new function() {
       };
 
       var bases;
-      if (read.originalBases)
+      if (read.originalBases) {
         bases = read.originalBases.split('');
+      }
       var baseIndex = 0;
       var matches = read.cigar.match(cigarMatcher);
       read.length = 0;
@@ -772,8 +773,9 @@ var readgraph = new function() {
           case 'N':
             // Deletions get placeholders inserted
             for (var b = 0; b < baseCount; b++) {
-              if (bases)
+              if (bases) {
                 addLetter(baseType, '-', 100);
+              }
               read.length++;
             }
             break;
@@ -786,9 +788,10 @@ var readgraph = new function() {
           case '=':
             // Matches and insertions get displayed
             for (var j = 0; j < baseCount; j++) {
-              if (bases)
+              if (bases) {
                 addLetter(baseType, bases[baseIndex],
                   read.baseQuality.charCodeAt(baseIndex) - 33);
+              }
               baseIndex++;
               read.length++;
             }
@@ -904,16 +907,18 @@ var readgraph = new function() {
   };
 
   var showSpinner = function(show) {
-    if (show == spinnerShown)
+    if (show == spinnerShown) {
       return;
+    }
     spinnerShown = show;
     spinner.style('display', show ? 'block' : 'none');
     if ('time' in console) {
       var timeLabel = 'readgraph loading';
-      if (show)
+      if (show) {
         console.time(timeLabel);
-      else
+      } else {
         console.timeEnd(timeLabel);
+      }
     }
     if ('timeStamp' in console) {
       console.timeStamp('readgraph load ' + (show ? 'start' : 'finish'));
