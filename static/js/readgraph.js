@@ -751,9 +751,12 @@ var readgraph = new function() {
         });
       };
 
-      var bases = read.originalBases.split('');
+      var bases;
+      if (read.originalBases)
+        bases = read.originalBases.split('');
       var baseIndex = 0;
       var matches = read.cigar.match(cigarMatcher);
+      read.length = 0;
 
       for (var m = 0; m < matches.length; m++) {
         var match = matches[m];
@@ -769,7 +772,9 @@ var readgraph = new function() {
           case 'N':
             // Deletions get placeholders inserted
             for (var b = 0; b < baseCount; b++) {
-              addLetter(baseType, '-', 100);
+              if (bases)
+                addLetter(baseType, '-', 100);
+              read.length++;
             }
             break;
           case 'S': // TODO: Reveal this skipped data somewhere
@@ -781,15 +786,16 @@ var readgraph = new function() {
           case '=':
             // Matches and insertions get displayed
             for (var j = 0; j < baseCount; j++) {
-              addLetter(baseType, bases[baseIndex],
+              if (bases)
+                addLetter(baseType, bases[baseIndex],
                   read.baseQuality.charCodeAt(baseIndex) - 33);
               baseIndex++;
+              read.length++;
             }
             break;
         }
       }
 
-      read.length = read.readPieces.length;
       read.end = read.position + read.length;
       // The 5th flag bit indicates this read is reversed
       read.reverse = (read.flags >> 4) % 2 == 1;
@@ -867,7 +873,9 @@ var readgraph = new function() {
     queryParams.sequenceEnd = parseInt(sequenceEnd);
     
     if (type == READSET_TYPE) {
-      queryParams.fields = 'nextPageToken,reads(name,position,matePosition,mappingQuality,baseQuality,cigar,originalBases)'
+      var baseView = getScaleLevel() > 5;
+      var baseFields = baseView ? ',originalBases,baseQuality' : '';
+      queryParams.fields = 'nextPageToken,reads(name,position,matePosition,mappingQuality,cigar' + baseFields + ')';
     }
 
     return queryParams;
