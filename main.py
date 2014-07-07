@@ -23,6 +23,7 @@ This file serves two main purposes
 GOOGLE_API_KEY = None
 
 import httplib2
+import time
 import jinja2
 import json
 import logging
@@ -98,10 +99,13 @@ class BaseRequestHandler(webapp2.RequestHandler):
     return SUPPORTED_BACKENDS[self.get_backend()]['url']
 
   def get_content(self, path, method='POST', body=None, params=''):
+    uri= self.get_base_api_url() % (path, params)
+    startTime = time.clock()
     response, content = http.request(
-      uri= self.get_base_api_url() % (path, params),
+      uri,
       method=method, body=json.dumps(body) if body else None,
       headers={'Content-Type': 'application/json; charset=UTF-8'})
+    logging.info('get_content {}: {}kb {}s'.format(uri, len(content)/1024, time.clock() - startTime))
 
     try:
       content = json.loads(content)
@@ -116,6 +120,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
         raise ApiException(content['error']['message'])
       else:
         raise ApiException('Something went wrong with the API call!')
+
     return content
 
   def write_content(self, path, method='POST', body=None):

@@ -47,6 +47,8 @@ var readgraph = new function() {
   var readTrackLength = 0;
   var callsetTrackLength = 0;
 
+  var spinnerShown = false;
+
   // Dom elements
   var svg, axisGroup, readGroup, readDiv, variantDiv, spinner = null;
   var hoverline, positionIndicator, positionIndicatorBg, positionIndicatorText;
@@ -888,8 +890,25 @@ var readgraph = new function() {
     }, 500);
   };
 
+  var showSpinner = function(show) {
+    if (show == spinnerShown)
+      return;
+    spinnerShown = show;
+    spinner.style('display', show ? 'block' : 'none');
+    if ('time' in console) {
+      var timeLabel = 'readgraph loading';
+      if (show)
+        console.time(timeLabel);
+      else
+        console.timeEnd(timeLabel);
+    }
+    if ('timeStamp' in console) {
+      console.timeStamp('readgraph load ' + (show ? 'start' : 'finish'));
+    }
+  }
+
   var callXhr = function(url, queryParams, handler, opt_data) {
-    spinner.style('display', 'block');
+    showSpinner(true);
     $.getJSON(url, queryParams)
         .done(function(res) {
           var data = (opt_data || []).concat(res.reads || res.variants || []);
@@ -899,11 +918,11 @@ var readgraph = new function() {
             queryParams['pageToken'] = res.nextPageToken;
             callXhr(url, queryParams, handler, data);
           } else {
-            spinner.style('display', 'none');
+            showSpinner(false);
           }
         })
         .fail(function() {
-          spinner.style('display', 'none');
+          showSpinner(false);
         });
   };
 
