@@ -105,7 +105,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
       uri,
       method=method, body=json.dumps(body) if body else None,
       headers={'Content-Type': 'application/json; charset=UTF-8'})
-    logging.info('get_content {}: {}kb {}s'.format(uri, len(content)/1024, time.clock() - startTime))
+    contentLen = len(content)
 
     try:
       content = json.loads(content)
@@ -121,6 +121,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
       else:
         raise ApiException('Something went wrong with the API call!')
 
+    logging.info('get_content {}: {}kb {}s'.format(uri, contentLen, time.clock() - startTime))
     return content
 
   def write_content(self, path, method='POST', body=None, params=''):
