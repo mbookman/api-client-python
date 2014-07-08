@@ -123,7 +123,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
       else:
         raise ApiException('Something went wrong with the API call!')
 
-    logging.info('get_content {}: {}kb {}s'.format(uri, contentLen, time.clock() - startTime))
+    logging.info('get_content {}: {}kb {}s'.format(uri, contentLen/1024, time.clock() - startTime))
     return content
 
   def write_content(self, path, method='POST', body=None, params=''):
