@@ -285,10 +285,13 @@ function handleHash() {
 }
 
 
-// Show the about popup when the page loads, read the hash,
+// Show the about popup when the page loads the first time, read the hash,
 // and prep the initial set search
 $(document).ready(function() {
-  $('#about').modal('show');
+  if (!sessionStorage.getItem('about-shown')) {
+    sessionStorage.setItem('about-shown', true);
+    $('#about').modal('show');
+  }
 
   $(document).ajaxError(function(e, xhr) {
     showError('Sorry, the api request failed for some reason. ' +
