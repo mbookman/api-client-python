@@ -461,6 +461,12 @@ var readgraph = new function() {
     var variantOutlines = variants.selectAll(".outline");
     var variantLetters = variants.selectAll(".letter");
 
+    // If we're trying to display bases but don't yet have the letters data,
+    // then just show the reads for now.  This ensures a smooth zooming experience.
+    if (baseView && readLetters.length > 0 && readLetters.every(function(r) { return r.length == 0 })) {
+      baseView = false;
+      readView = true;
+    }
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(readOutlines, readView);
     toggleVisibility(variantOutlines, readView);
