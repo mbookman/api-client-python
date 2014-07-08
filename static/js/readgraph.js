@@ -42,7 +42,6 @@ var readgraph = new function() {
   var mergedSequences = [];
   var currentSequence = null;
   var readStats = {}; // Map from position to stat information
-  var xhrTimeout = null;
 
   var readTrackLength = 0;
   var callsetTrackLength = 0;
@@ -76,6 +75,8 @@ var readgraph = new function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
   };
 
+  // Called at high frequency for any navigation of the UI (not just zooming).
+  // Should only do low-latency operations.
   var handleZoom = function() {
     var tx = zoom.translate()[0];
     // TODO: This isn't strict enough
@@ -88,6 +89,18 @@ var readgraph = new function() {
     d3.select('.zoomLevel').attr('y', (6 - getScaleLevel()) * 24 + 38);
     updateDisplay();
   };
+  
+  // Called when a navigation operation has completed.  This is the place to
+  // do more expensive operations than simple UI updates.  Should not be
+  // called frequently.
+  var handleZoomEnd = function() {
+    handleZoom();
+    if (getScaleLevel() >= 4) {
+      var sequenceStart = parseInt(x.domain()[0]);
+      var sequenceEnd = parseInt(x.domain()[1]);
+      queryData(sequenceStart, sequenceEnd);
+    }
+  } 
 
   var moveToSequencePosition = function(position) {
     position = Math.max(0, position);
@@ -96,7 +109,7 @@ var readgraph = new function() {
     var newX = x(position);
     newX = zoom.translate()[0] - newX + width / 2;
     zoom.translate([newX, 0]);
-    handleZoom();
+    handleZoomEnd();
   };
 
   var setupRun = false;
@@ -199,11 +212,11 @@ var readgraph = new function() {
       newZoom = Math.min(maxZoom, newZoom);
       zoom.scale(newZoom);
 
-      handleZoom();
+      handleZoomEnd();
       moveToSequencePosition(middleX);
     };
 
-    zoom = d3.behavior.zoom().size([width, height]).on("zoom", handleZoom);
+    zoom = d3.behavior.zoom().size([width, height]).on("zoom", handleZoom).on("zoomend", handleZoomEnd);;
     svg.call(zoom);
 
     // Zoom background
@@ -431,7 +444,7 @@ var readgraph = new function() {
     $('#jumpDiv').show();
   };
 
-  var updateDisplay = function(opt_skipDataQuery) {
+  var updateDisplay = function() {
     var maxY = updateHeight();
 
     var scaleLevel = getScaleLevel();
@@ -457,10 +470,6 @@ var readgraph = new function() {
 
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
-
-    if (!opt_skipDataQuery && (readView || baseView)) {
-      queryData(sequenceStart, sequenceEnd);
-    }
 
     // TODO: Bring back coverage and summary views
     if (readView) {
@@ -710,7 +719,7 @@ var readgraph = new function() {
     variantDivs.exit().remove();
 
     callsetTrackLength = maxCalls;
-    updateDisplay(true);
+    updateDisplay();
   };
 
   var setReads = function(reads) {
@@ -848,7 +857,7 @@ var readgraph = new function() {
           .text(function(data, i) { return data.letter; });
     }
     reads.exit().remove();
-    updateDisplay(true);
+    updateDisplay();
   };
 
 
@@ -888,22 +897,16 @@ var readgraph = new function() {
     var readParams = makeQueryParams(start, end, READSET_TYPE);
     var variantParams = makeQueryParams(start, end, CALLSET_TYPE);
 
-    if (xhrTimeout) {
-      clearTimeout(xhrTimeout);
+    if (readParams) {
+      callXhr('/api/reads', readParams, setReads);
+    } else {
+      setReads([]);
     }
-
-    xhrTimeout = setTimeout(function() {
-      if (readParams) {
-        callXhr('/api/reads', readParams, setReads);
-      } else {
-        setReads([]);
-      }
-      if (variantParams) {
-        callXhr('/api/variants', variantParams, setVariants);
-      } else {
-        setVariants([]);
-      }
-    }, 500);
+    if (variantParams) {
+      callXhr('/api/variants', variantParams, setVariants);
+    } else {
+      setVariants([]);
+    }
   };
 
   var showSpinner = function(show) {
