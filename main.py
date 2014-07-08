@@ -18,10 +18,6 @@ This file serves two main purposes
 - and it provides a simple set of apis to the javascript
 """
 
-# If this is set to a valid API key string, then the Google
-# backend will be enabled.
-GOOGLE_API_KEY = None
-
 import httplib2
 import time
 import jinja2
@@ -40,6 +36,7 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     autoescape=True,
     extensions=['jinja2.ext.autoescape'])
 
+
 # TODO: Dataset information should come from the list datasets api call
 SUPPORTED_BACKENDS = {
   'NCBI' : {'name': 'NCBI',
@@ -53,19 +50,23 @@ SUPPORTED_BACKENDS = {
              'datasets': {'All': ''}},
 }
 
-if GOOGLE_API_KEY:
-  # Google requires a valid API key
-  SUPPORTED_BACKENDS['GOOGLE'] = {
-    'name': 'Google',
-    'url': 'https://www.googleapis.com/genomics/v1beta/%s?key='
-           + GOOGLE_API_KEY + '&%s',
-    'supportsNameFilter': True,
-    #'supportsCallsets': True,
-    'datasets': {'1000 Genomes': '376902546192',
-                 'DREAM SMC Challenge': '337315832689',
-                 'PGP': '383928317087',
-                 'Simons Foundation' : '461916304629'}
-  }
+# Google requires a valid API key.  If the file 'google_api_key.txt' exists
+# then the Google API will be enabled.
+google_api_key_file = os.path.join(os.path.dirname(__file__), 'google_api_key.txt')
+if os.path.isfile(google_api_key_file):
+  with open(google_api_key_file, 'r') as file:
+    api_key = file.readline().strip()
+    SUPPORTED_BACKENDS['GOOGLE'] = {
+      'name': 'Google',
+      'url': 'https://www.googleapis.com/genomics/v1beta/%s?key='
+             + api_key + '&%s',
+      'supportsNameFilter': True,
+      #'supportsCallsets': True,
+      'datasets': {'1000 Genomes': '376902546192',
+                   'DREAM SMC Challenge': '337315832689',
+                   'PGP': '383928317087',
+                   'Simons Foundation' : '461916304629'}
+    }
 
 
 class ApiException(Exception):
@@ -110,6 +111,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
     try:
       content = json.loads(content)
     except ValueError:
+      logging.error('while requesting {}'.format(uri))
       logging.error('non-json api content %s' % content[:1000])
       raise ApiException('The API returned invalid JSON')
 

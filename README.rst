@@ -50,8 +50,8 @@ Then install the required dependencies and run the ``localserver.py`` file::
 Enabling the Google API
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-If you want to pull in data from `Google Genomics API`_ you will need to set
-``API_KEY`` in ``main.py`` to a valid Google API key.
+If you want to pull in data from `Google Genomics API`_ you will need to store a valid
+Google API key into a file named ``google_api_key.txt``.
 
 * First create a `Genomics enabled project <https://console.developers.google.com/flows/enableapi?apiid=genomics>`_ 
   in the Google Developers Console.
@@ -63,10 +63,10 @@ If you want to pull in data from `Google Genomics API`_ you will need to set
   (You don't need to enter anything in the text box)
 
 * Copy the **API key** field value that now appears in the Public API access
-  section into the top of ``main.py``. It should look something like this::
+  section into a new file named ``google_api_key.txt`` in the same directory as ``main.py``.
+  The file should consist of a single undecorated line like this::
 
-    API_KEY = "abcdef12345abcdef"
-
+    abcdef12345abcdef
 
 Note: You can also reuse an existing API key if you have one.
 Just make sure the Genomics API is turned on.
