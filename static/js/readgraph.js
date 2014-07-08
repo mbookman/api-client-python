@@ -53,9 +53,9 @@ var readgraph = new function() {
   var hoverline, positionIndicator, positionIndicatorBg, positionIndicatorText;
 
   var updateHeight = function() {
-    var totalTracks = readTrackLength + callsetTrackLength;
-    height = totalTracks * textHeight + 100;
+    height = (readTrackLength + callsetTrackLength) * textHeight + 100;
     height = Math.max(height, 450);
+    var totalTracks = (height - 100) / textHeight;
 
     y.range([margin, height - margin*2]).domain([totalTracks, -1]);
     $('#graph').height(height);
