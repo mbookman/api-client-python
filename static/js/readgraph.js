@@ -48,6 +48,13 @@ var readgraph = new function() {
 
   var spinnerShown = false;
 
+  var readCache = {
+      desireBases: false,
+      desiredStart: 0,
+      desiredEnd: 0,
+      readsById: {}
+  };
+  
   // Dom elements
   var svg, axisGroup, readGroup, readDiv, variantDiv, spinner = null;
   var hoverline, positionIndicator, positionIndicatorBg, positionIndicatorText;
@@ -74,6 +81,11 @@ var readgraph = new function() {
   var getScaleLevel = function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
   };
+  
+  // Return whether two sequences overlap at all
+  var overlaps = function(start1, end1, start2, end2) {
+    return start1 < end2 && end1 > start2; 
+  }
 
   // Called at high frequency for any navigation of the UI (not just zooming).
   // Should only do low-latency operations.
@@ -95,10 +107,11 @@ var readgraph = new function() {
   // called frequently.
   var handleZoomEnd = function() {
     handleZoom();
-    if (getScaleLevel() >= 4) {
+    var scaleLevel = getScaleLevel();
+    if (scaleLevel >= 4) {
       var sequenceStart = parseInt(x.domain()[0]);
       var sequenceEnd = parseInt(x.domain()[1]);
-      queryData(sequenceStart, sequenceEnd);
+      ensureReadsCached(sequenceStart, sequenceEnd, scaleLevel > 5);
     }
   } 
 
@@ -444,65 +457,81 @@ var readgraph = new function() {
     $('#jumpDiv').show();
   };
 
+  // Update the UI for the current position.  Called frequently during a drag
+  // or zoom operation, and so this must be very fast (<16ms for 60fps dragging).
+  // This shouldn't create or manipulate any SVG/DOM objects for things not being
+  // displayed (eg. offscreen letters).
   var updateDisplay = function() {
     var maxY = updateHeight();
-
+    
     var scaleLevel = getScaleLevel();
     var summaryView = scaleLevel < 2;
     var coverageView = scaleLevel == 2 || scaleLevel == 3;
     var readView = scaleLevel == 4 || scaleLevel == 5;
     var baseView = scaleLevel > 5;
 
-    var reads = readGroup.selectAll(".read");
+    var sequenceStart = parseInt(x.domain()[0]);
+    var sequenceEnd = parseInt(x.domain()[1]);
+
+    var readsInView = d3.values(readCache.readsById).filter(function(read) {
+      return overlaps(read.position, read.end, sequenceStart, sequenceEnd);
+    });
+    var reads = readGroup.selectAll(".read").data(readsInView,
+      function(read) { return read.id; });
+    reads.enter().append("g")
+      .attr('class', 'read')
+      .on("mouseover", showRead)
+      .on("mouseout", deselectObject);
+    reads.exit().remove();
+
     var variants = readGroup.selectAll(".variant");
 
-    var readOutlines = reads.selectAll(".outline");
+    var readOutlines = reads.selectAll(".outline")
+      .data(function(read, i) { return [read];});
+    readOutlines.enter().append('polygon')
+      .attr('class', 'outline');
+    readOutlines.exit().remove();
+    
     var readLetters = reads.selectAll(".letter");
+
     var variantOutlines = variants.selectAll(".outline");
     var variantLetters = variants.selectAll(".letter");
 
-    // If we're trying to display bases but don't yet have the letters data,
-    // then just show the reads for now.  This ensures a smooth zooming experience.
-    if (baseView && readLetters.length > 0 && readLetters.every(function(r) { return r.length == 0 })) {
-      baseView = false;
-      readView = true;
-    }
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(readOutlines, readView);
     toggleVisibility(variantOutlines, readView);
     toggleVisibility(readLetters, baseView);
     toggleVisibility(variantLetters, baseView);
     toggleVisibility(positionIndicator, baseView);
-
-    var sequenceStart = parseInt(x.domain()[0]);
-    var sequenceEnd = parseInt(x.domain()[1]);
-
     // TODO: Bring back coverage and summary views
-    if (readView) {
-      // Read outlines
-      readOutlines.attr("points", readOutlinePoints);
 
-      // Variant outlines
+    if (readView) {
+      readOutlines.attr("points", readOutlinePoints);
       variantOutlines
         .attr("x1", function(data) { return x(data.rx) + textWidth; })
         .attr("x2", function(data) { return x(data.rx) + textWidth; })
         .attr("y1", function(data) { return y(maxY - data.ry); })
         .attr("y2", function(data) { return y(maxY - data.ry) + textHeight; });
-
+      readLetters.remove();
+      
     } else if (baseView) {
-      // Read bases
-      readLetters.style('display', function(data, i) {
-            if (data.rx < sequenceStart || data.rx >= sequenceEnd - 1) {
-              return 'none';
-            } else {
-              return 'block';
-            }
-          })
-          .attr("x", function(data, i) {
+      readLetters = readLetters.data(function(read, i) { 
+        return read.readPieces.filter(function(letter) {
+          return letter.rx >= sequenceStart && letter.rx < sequenceEnd;
+        }); 
+      });
+
+      readLetters.enter().append('text')
+        .attr('class', 'letter')
+        .style('opacity', function(data, i) { return opacity(data.qual); })
+        .text(function(data, i) { return data.letter; });
+      readLetters.exit().remove();
+      
+      readLetters.attr("x", function(data, i) {
             return x(data.rx) + textWidth;
           })
           .attr("y", function(data, i) {
-            return y(data.ry) + textHeight/2;
+            return y(this.parentNode.__data__.yOrder) + textHeight/2;
           });
 
       // Red position highlight box
@@ -578,7 +607,7 @@ var readgraph = new function() {
       return '0,0';
     }
 
-    var startY = y(read.yOrder);
+    var startY = y(this.parentNode.__data__.yOrder);
     var endY = startY + barHeight;
     var midY = (startY + barHeight / 2);
 
@@ -654,14 +683,6 @@ var readgraph = new function() {
 
   // D3 object creation
 
-  var setYOrder = function(read, yOrder) {
-    read.yOrder = yOrder;
-
-    for (var r = 0; r < read.readPieces.length; r++) {
-      read.readPieces[r].ry = read.yOrder;
-    }
-  };
-
   var getGenotype = function(variant, call) {
 
     // TODO: Switch to genotype field when its ready
@@ -728,25 +749,33 @@ var readgraph = new function() {
     updateDisplay();
   };
 
-  var setReads = function(reads) {
-    var yTracks = [];
-    var readIds = {};
-    readStats = {};
+  var updateReads = function(reads) {
+    var newReadIds = {};
+    
     $.each(reads, function(readi, read) {
-      // Interpret the cigar
-      // TODO: Compare the read against a reference as well
-
       // TODO: Nobody is handing back actually unique ids right now
       read.id = (read.id || read.name) + read.position + read.cigar;
-      if (readIds[read.id]) {
-        showError('There is more than one read with the ID ' + read.id +
-            ' - this will cause display problems');
-      }
-      readIds[read.id] = true;
 
+      if (newReadIds[read.id]) {
+        showError('There is more than one read with the ID ' + read.id +
+            ' - extras ignored');
+        return;
+      }
+      newReadIds[read.id] = true;
+
+      // Skip this read if we already have it.  Ideally the API would let us
+      // exclude the reads we already have.
+      if (read.id in readCache.readsById) {
+        if (('originalBases' in read) == ('originalBases' in readCache.readsById[read.id])) {        
+          return;
+        }
+        read.yOrder = readCache.readsById[read.id].yOrder;
+      } 
+      
+      // Interpret the cigar
+      // TODO: Compare the read against a reference as well
       read.name = read.name || read.id;
       read.readPieces = [];
-      read.index = readi;
       if (!read.cigar) {
         // Hack for unmapped reads
         read.length = 0;
@@ -818,58 +847,30 @@ var readgraph = new function() {
       // The 5th flag bit indicates this read is reversed
       read.reverse = (read.flags >> 4) % 2 == 1;
 
-      for (var i = 0; i < yTracks.length; i++) {
-        if (yTracks[i] < read.position) {
-          yTracks[i] = read.end;
-          setYOrder(read, i);
-          return;
+      // Create or update the entry in the cache, assuming we still want it.
+      // Note that we can't easily do this test above because we need to compute
+      // read.end first.
+      if (overlaps(read.position, read.end, readCache.desiredStart, readCache.desiredEnd)) {
+        // Find the lowest available track for this read.
+        // TODO: Use a more efficient algorithm.
+        trackUnavailable = [];
+        $.each(readCache.readsById, function(id, read2) {
+          if (overlaps(read.position, read.end, read2.position, read2.end)) {
+            trackUnavailable[read2.yOrder] = true;
+          }
+        });
+        for(read.yOrder = 0; trackUnavailable[read.yOrder]; read.yOrder++) {
         }
+        readCache.readsById[read.id] = read;
       }
-
-      setYOrder(read, yTracks.length);
-      yTracks.push(read.end);
     });
-
-    readTrackLength = yTracks.length;
-
-    readGroup.selectAll('.read').remove();
-    if (reads.length == 0) {
-      // Update the data behind the graph
-      return;
-    }
-
-    var reads = readGroup.selectAll(".read").data(reads,
-        function(read){ return read.id; });
-
-    reads.enter().append("g")
-        .attr('class', 'read')
-        .attr('index', function(read, i) { return read.index; })
-        .on("mouseover", showRead)
-        .on("mouseout", deselectObject);
-
-    var outlines = reads.selectAll('.outline')
-        .data(function(read, i) { return [read];});
-    outlines.enter().append('polygon')
-        .attr('class', 'outline');
-
-    var baseView = getScaleLevel() > 5;
-    if (baseView) {
-      var letters = reads.selectAll(".letter")
-          .data(function(read, i) { return read.readPieces; });
-
-      letters.enter().append('text')
-          .attr('class', 'letter')
-          .style('opacity', function(data, i) { return opacity(data.qual); })
-          .text(function(data, i) { return data.letter; });
-    }
-    reads.exit().remove();
+    
     updateDisplay();
-  };
-
-
+  }
+    
   // Data loading
 
-  var makeQueryParams = function(sequenceStart, sequenceEnd, type) {
+  var makeQueryParams = function(sequenceStart, sequenceEnd, type, opt_bases) {
     var sets = _.where(setObjects, {type: type});
     if (sets.length == 0) {
       return null;
@@ -891,22 +892,50 @@ var readgraph = new function() {
     queryParams.sequenceEnd = parseInt(sequenceEnd);
     
     if (type == READSET_TYPE) {
-      var baseView = getScaleLevel() > 5;
-      var baseFields = baseView ? ',originalBases,baseQuality' : '';
+      var baseFields = opt_bases ? ',originalBases,baseQuality' : '';
       queryParams.fields = 'nextPageToken,reads(name,position,matePosition,mappingQuality,cigar' + baseFields + ')';
     }
 
     return queryParams;
   };
 
-  var queryData = function(start, end) {
-    var readParams = makeQueryParams(start, end, READSET_TYPE);
+  var ensureReadsCached = function(start, end, bases) {
+    // Cache additional data than just what's requested so that we can do
+    // some small navigations quickly and without incurring redudant transfers.
+    // Smaller values of the cache factor result in more redundant read
+    // operations, larger values use more memory and reduce the likelihood of
+    // temporarily seeing missing reads.
+    // If the API allowed us to request (or exclude) specific reads, then we
+    // could be sure to query only for the reads we don't already have.
+    const readCacheFactor = 1;
+    var bufferSize = (end - start) * readCacheFactor;
+    
+    if (start - bufferSize >= readCache.desiredStart 
+        && end + bufferSize <= readCache.desiredEnd
+        && (readCache.desireBases || !bases)) {
+      return;
+    }
+    
+    readCache.desiredStart = start - 2 * bufferSize;
+    readCache.desiredEnd = end + 2 * bufferSize;
+    readCache.desireBases = bases;
+    // TODO: Don't requery the current region for the pan case.
+    queryData(readCache.desiredStart, readCache.desiredEnd, readCache.desireBases);
+    
+    // Discard any cached reads that are now entirely outside our desired window.
+    $.each(readCache.readsById, function(id, read) {
+      if (read.position > readCache.desiredEnd || read.end < readCache.desiredStart) {
+        delete readCache.readsById[id];
+      }
+    });
+  };
+  
+  var queryData = function(start, end, bases) {
+    var readParams = makeQueryParams(start, end, READSET_TYPE, bases);
     var variantParams = makeQueryParams(start, end, CALLSET_TYPE);
 
     if (readParams) {
-      callXhr('/api/reads', readParams, setReads);
-    } else {
-      setReads([]);
+      callXhr('/api/reads', readParams, updateReads);
     }
     if (variantParams) {
       callXhr('/api/variants', variantParams, setVariants);
@@ -915,6 +944,7 @@ var readgraph = new function() {
     }
   };
 
+  // TODO: Fix handling of overlapping loads.
   var showSpinner = function(show) {
     if (show == spinnerShown) {
       return;
@@ -938,8 +968,15 @@ var readgraph = new function() {
     showSpinner(true);
     $.getJSON(url, queryParams)
         .done(function(res) {
-          var data = (opt_data || []).concat(res.reads || res.variants || []);
-          handler(data);
+          var data;
+          if (res.reads) {
+            // Reads are handled incrementally, but variants aren't yet.
+            // Eventually variants will be updated to follow the same pattern.
+            handler(res.reads)
+          } else {
+            data = (opt_data || []).concat(res.variants || []);
+            handler(data);
+          }
 
           if (res.nextPageToken) {
             queryParams['pageToken'] = res.nextPageToken;
