@@ -127,6 +127,7 @@ class BaseRequestHandler(webapp2.RequestHandler):
     return content
 
   def write_content(self, path, method='POST', body=None, params=''):
+    self.response.headers['Content-Type'] = "application/json"
     self.response.write(json.dumps(self.get_content(path, method, body, params)))
 
 
