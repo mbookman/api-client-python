@@ -1,3 +1,7 @@
-*~
+.gitignore
+.project
+.pydevproject
+.settings
+google_api_key.txt
+static/js/d3.js
 *.pyc
-.idea
