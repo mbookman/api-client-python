@@ -52,7 +52,7 @@ var readgraph = new function() {
       desiredEnd: 0,
       readsById: {}
   };
-  
+
   // Dom elements
   var svg, axisGroup, readGroup, readDiv, variantDiv, spinner = null;
   var hoverline, positionIndicator, positionIndicatorBg, positionIndicatorText;
@@ -79,10 +79,10 @@ var readgraph = new function() {
   var getScaleLevel = function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
   };
-  
+
   // Return whether two sequences overlap at all
   var overlaps = function(start1, end1, start2, end2) {
-    return start1 < end2 && end1 > start2; 
+    return start1 < end2 && end1 > start2;
   }
 
   // Called at high frequency for any navigation of the UI (not just zooming).
@@ -99,7 +99,7 @@ var readgraph = new function() {
     d3.select('.zoomLevel').attr('y', (6 - getScaleLevel()) * 24 + 38);
     updateDisplay();
   };
-  
+
   // Called when a navigation operation has completed.  This is the place to
   // do more expensive operations than simple UI updates.  Should not be
   // called frequently.
@@ -111,7 +111,7 @@ var readgraph = new function() {
       var sequenceEnd = parseInt(x.domain()[1]);
       ensureReadsCached(sequenceStart, sequenceEnd, scaleLevel > 5);
     }
-  } 
+  }
 
   var moveToSequencePosition = function(position) {
     position = Math.max(0, position);
@@ -392,7 +392,7 @@ var readgraph = new function() {
     maxZoom = Math.ceil(Math.max(1, sequence['length'] / minRange));
     zoomLevelChange = Math.pow(maxZoom, 1/6);
     zoom.x(x).scaleExtent([1, maxZoom]).size([width, height]);
-    
+
     $('#jumpDiv').show();
   };
 
@@ -458,7 +458,7 @@ var readgraph = new function() {
   // displayed (eg. offscreen letters).
   var updateDisplay = function() {
     var maxY = updateHeight();
-    
+
     var scaleLevel = getScaleLevel();
     var summaryView = scaleLevel < 2;
     var coverageView = scaleLevel == 2 || scaleLevel == 3;
@@ -486,7 +486,7 @@ var readgraph = new function() {
     readOutlines.enter().append('polygon')
       .attr('class', 'outline');
     readOutlines.exit().remove();
-    
+
     var readLetters = reads.selectAll(".letter");
 
     var variantOutlines = variants.selectAll(".outline");
@@ -494,12 +494,12 @@ var readgraph = new function() {
 
     // If we are trying to do base view but have no reads with bases yet, then
     // just show reads for now.
-    if (baseView && readsInView.length 
+    if (baseView && readsInView.length
         && readsInView.every(function (r) { return r.readPieces.length == 0; })) {
       baseView = false;
       readView = true;
     }
-    
+
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(readOutlines, readView);
     toggleVisibility(variantOutlines, readView);
@@ -516,12 +516,12 @@ var readgraph = new function() {
         .attr("y1", function(data) { return y(maxY - data.ry); })
         .attr("y2", function(data) { return y(maxY - data.ry) + textHeight; });
       readLetters.remove();
-      
+
     } else if (baseView) {
-      readLetters = readLetters.data(function(read, i) { 
+      readLetters = readLetters.data(function(read, i) {
         return read.readPieces.filter(function(letter) {
           return letter.rx >= sequenceStart && letter.rx < sequenceEnd;
-        }); 
+        });
       });
 
       readLetters.enter().append('text')
@@ -529,7 +529,7 @@ var readgraph = new function() {
         .style('opacity', function(data, i) { return opacity(data.qual); })
         .text(function(data, i) { return data.letter; });
       readLetters.exit().remove();
-      
+
       readLetters.attr("x", function(data, i) {
             return x(data.rx) + textWidth;
           })
@@ -754,7 +754,7 @@ var readgraph = new function() {
 
   var updateReads = function(reads) {
     var newReadIds = {};
-    
+
     $.each(reads, function(readi, read) {
       // TODO: Nobody is handing back actually unique ids right now
       read.id = (read.id || read.name) + read.position + read.cigar;
@@ -769,11 +769,11 @@ var readgraph = new function() {
       // Skip this read if we already have it.  Ideally the API would let us
       // exclude the reads we already have.
       if (read.id in readCache.readsById) {
-        if (('originalBases' in read) == ('originalBases' in readCache.readsById[read.id])) {        
+        if (('originalBases' in read) == ('originalBases' in readCache.readsById[read.id])) {
           return;
         }
-      } 
-      
+      }
+
       // Interpret the cigar
       // TODO: Compare the read against a reference as well
       read.name = read.name || read.id;
@@ -872,10 +872,10 @@ var readgraph = new function() {
         readCache.readsById[read.id] = read;
       }
     });
-    
+
     updateDisplay();
   }
-    
+
   // Data loading
 
   var makeQueryParams = function(sequenceStart, sequenceEnd, type, opt_bases) {
@@ -898,7 +898,7 @@ var readgraph = new function() {
     queryParams.sequenceName = currentSequence.name;
     queryParams.sequenceStart = parseInt(sequenceStart);
     queryParams.sequenceEnd = parseInt(sequenceEnd);
-    
+
     if (type == READSET_TYPE) {
       var baseFields = opt_bases ? ',originalBases,baseQuality' : '';
       queryParams.fields = 'nextPageToken,reads(name,position,matePosition,mappingQuality,cigar' + baseFields + ')';
@@ -908,29 +908,57 @@ var readgraph = new function() {
   };
 
   var ensureReadsCached = function(start, end, bases) {
+
+    // Are we switching between base and read view?
+    var addBases = false;
+    if (bases != readCache.desireBases) {
+      if (bases) {
+        addBases = true;
+      } else {
+        // clear any stored bases to avoid potentially holding onto a lot of
+        // extra memory indefinitely
+        $.each(readCache.readsById, function(id, read) {
+          read.readPieces = [];
+        });
+      }
+    }
+
     // Cache additional data than just what's requested so that we can do
     // some small navigations quickly and without incurring redudant transfers.
     // Smaller values of the cache factor result in more redundant read
     // operations, larger values use more memory and reduce the likelihood of
     // temporarily seeing missing reads.
-    // If the API allowed us to request (or exclude) specific reads, then we
-    // could be sure to query only for the reads we don't already have (perhaps
-    // we should emulate that in the python layer).
     const minCacheFactor = 0.5;
     const maxCacheFactor = 1;
-    var windowSize = end - start;    
-    if (start - windowSize * minCacheFactor >= readCache.desiredStart 
+    var windowSize = end - start;
+    if (start - windowSize * minCacheFactor >= readCache.desiredStart
         && end + windowSize * minCacheFactor <= readCache.desiredEnd
-        && (readCache.desireBases || !bases)) {
+        && !addBases) {
       return;
     }
-    
-    readCache.desiredStart = start - windowSize * maxCacheFactor;
-    readCache.desiredEnd = end + windowSize * maxCacheFactor;
+
+
+    var desiredStart = start - windowSize * maxCacheFactor;
+    var desiredEnd = end + windowSize * maxCacheFactor;
+
+    if (overlaps(desiredStart, desiredEnd, readCache.desiredStart, readCache.desiredEnd)
+        && !addBases) {
+      // Don't re-request the reads we already have.  This will still retransfer
+      // reads which overlap the boundaries, but that should be small in practice.
+      if (desiredStart < readCache.desiredStart) {
+        queryData(desiredStart, readCache.desiredStart, bases);
+      }
+      if (desiredEnd > readCache.desiredEnd) {
+        queryData(readCache.desiredEnd, desiredEnd, bases);
+      }
+    } else {
+      queryData(desiredStart, desiredEnd, bases);
+    }
+
+    readCache.desiredStart = desiredStart;
+    readCache.desiredEnd = desiredEnd;
     readCache.desireBases = bases;
-    // TODO: Don't requery the current region for the pan case.
-    queryData(readCache.desiredStart, readCache.desiredEnd, readCache.desireBases);
-    
+
     // Discard any cached reads that are now entirely outside our desired window.
     $.each(readCache.readsById, function(id, read) {
       if (read.position > readCache.desiredEnd || read.end < readCache.desiredStart) {
@@ -938,7 +966,7 @@ var readgraph = new function() {
       }
     });
   };
-  
+
   var queryData = function(start, end, bases) {
     var readParams = makeQueryParams(start, end, READSET_TYPE, bases);
     var variantParams = makeQueryParams(start, end, CALLSET_TYPE);
@@ -953,12 +981,12 @@ var readgraph = new function() {
     }
   };
 
-  
+
   var pendingLoads = 0;
   var totalLoads = 0;
   var startLoadMonitor = function() {
     if (!pendingLoads) {
-      spinner.style('display', 'block');      
+      spinner.style('display', 'block');
     }
     pendingLoads++;
     var loadIndex = totalLoads++;
@@ -967,24 +995,24 @@ var readgraph = new function() {
       console.time(timeLabel);
     }
     if ('timeStamp' in console) {
-      console.timeStamp(timeLabel + ' start');      
+      console.timeStamp(timeLabel + ' start');
     }
-    
+
     // Callers should invoke this callback on completion
     return function() {
       pendingLoads--;
       if (!pendingLoads) {
-        spinner.style('display', 'none');      
+        spinner.style('display', 'none');
       }
       if ('time' in console) {
         console.timeEnd(timeLabel);
       }
       if ('timeStamp' in console) {
-        console.timeStamp(timeLabel + ' finish');      
+        console.timeStamp(timeLabel + ' finish');
       }
     };
   }
-  
+
   var totalReadBytes = 0;
   var callXhr = function(url, queryParams, handler, opt_monitor, opt_data) {
     var onComplete = opt_monitor || startLoadMonitor();

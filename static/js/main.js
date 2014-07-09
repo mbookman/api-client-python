@@ -56,7 +56,7 @@ function loadSet(backend, readsetIds, callsetIds, opt_location, setType, id) {
   }
 
   showMessage('Loading data');
-  
+
   $.getJSON('/api/sets', {backend: backend, setType: setType, setId: id})
     .done(function(res) {
       var sequenceData = res.contigs || res.fileData[0].refSequences;
