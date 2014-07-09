@@ -46,8 +46,6 @@ var readgraph = new function() {
   var readTrackLength = 0;
   var callsetTrackLength = 0;
 
-  var spinnerShown = false;
-
   var readCache = {
       desireBases: false,
       desiredStart: 0,
@@ -122,7 +120,6 @@ var readgraph = new function() {
     var newX = x(position);
     newX = zoom.translate()[0] - newX + width / 2;
     zoom.translate([newX, 0]);
-    handleZoomEnd();
   };
 
   var setupRun = false;
@@ -224,8 +221,6 @@ var readgraph = new function() {
       newZoom = Math.max(1, newZoom);
       newZoom = Math.min(maxZoom, newZoom);
       zoom.scale(newZoom);
-
-      handleZoomEnd();
       moveToSequencePosition(middleX);
     };
 
@@ -352,9 +347,9 @@ var readgraph = new function() {
     var zoomLevel = baseView ? maxZoom : maxZoom / zoomLevelChange; // Read level
     if (zoom.scale() != zoomLevel) {
       zoom.scale(zoomLevel);
-      handleZoom();
     }
     moveToSequencePosition(position);
+    handleZoomEnd();
   };
 
   var addImage = function(parent, name, width, height, x, y,
@@ -397,7 +392,7 @@ var readgraph = new function() {
     maxZoom = Math.ceil(Math.max(1, sequence['length'] / minRange));
     zoomLevelChange = Math.pow(maxZoom, 1/6);
     zoom.x(x).scaleExtent([1, maxZoom]).size([width, height]);
-
+    
     $('#jumpDiv').show();
   };
 
@@ -497,6 +492,14 @@ var readgraph = new function() {
     var variantOutlines = variants.selectAll(".outline");
     var variantLetters = variants.selectAll(".letter");
 
+    // If we are trying to do base view but have no reads with bases yet, then
+    // just show reads for now.
+    if (baseView && readsInView.length 
+        && readsInView.every(function (r) { return r.readPieces.length == 0; })) {
+      baseView = false;
+      readView = true;
+    }
+    
     toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(readOutlines, readView);
     toggleVisibility(variantOutlines, readView);
@@ -769,7 +772,6 @@ var readgraph = new function() {
         if (('originalBases' in read) == ('originalBases' in readCache.readsById[read.id])) {        
           return;
         }
-        read.yOrder = readCache.readsById[read.id].yOrder;
       } 
       
       // Interpret the cigar
@@ -850,16 +852,22 @@ var readgraph = new function() {
       // Create or update the entry in the cache, assuming we still want it.
       // Note that we can't easily do this test above because we need to compute
       // read.end first.
-      if (overlaps(read.position, read.end, readCache.desiredStart, readCache.desiredEnd)) {
-        // Find the lowest available track for this read.
-        // TODO: Use a more efficient algorithm.
-        trackUnavailable = [];
-        $.each(readCache.readsById, function(id, read2) {
-          if (overlaps(read.position, read.end, read2.position, read2.end)) {
-            trackUnavailable[read2.yOrder] = true;
+      if (overlaps(read.position, read.end, readCache.desiredStart, readCache.desiredEnd)
+              && ('originalBases' in read) == readCache.desireBases) {
+        var existingRead = readCache.readsById[read.id];
+        if (existingRead) {
+          read.yOrder = existingRead.yOrder;
+        } else {
+          // Find the lowest available track for this read.
+          // TODO: Use a more efficient algorithm.
+          trackUnavailable = [];
+          $.each(readCache.readsById, function(id, read2) {
+            if (overlaps(read.position, read.end, read2.position, read2.end)) {
+              trackUnavailable[read2.yOrder] = true;
+            }
+          });
+          for(read.yOrder = 0; trackUnavailable[read.yOrder]; read.yOrder++) {
           }
-        });
-        for(read.yOrder = 0; trackUnavailable[read.yOrder]; read.yOrder++) {
         }
         readCache.readsById[read.id] = read;
       }
@@ -906,18 +914,19 @@ var readgraph = new function() {
     // operations, larger values use more memory and reduce the likelihood of
     // temporarily seeing missing reads.
     // If the API allowed us to request (or exclude) specific reads, then we
-    // could be sure to query only for the reads we don't already have.
-    const readCacheFactor = 1;
-    var bufferSize = (end - start) * readCacheFactor;
-    
-    if (start - bufferSize >= readCache.desiredStart 
-        && end + bufferSize <= readCache.desiredEnd
+    // could be sure to query only for the reads we don't already have (perhaps
+    // we should emulate that in the python layer).
+    const minCacheFactor = 0.5;
+    const maxCacheFactor = 1;
+    var windowSize = end - start;    
+    if (start - windowSize * minCacheFactor >= readCache.desiredStart 
+        && end + windowSize * minCacheFactor <= readCache.desiredEnd
         && (readCache.desireBases || !bases)) {
       return;
     }
     
-    readCache.desiredStart = start - 2 * bufferSize;
-    readCache.desiredEnd = end + 2 * bufferSize;
+    readCache.desiredStart = start - windowSize * maxCacheFactor;
+    readCache.desiredEnd = end + windowSize * maxCacheFactor;
     readCache.desireBases = bases;
     // TODO: Don't requery the current region for the pan case.
     queryData(readCache.desiredStart, readCache.desiredEnd, readCache.desireBases);
@@ -944,30 +953,45 @@ var readgraph = new function() {
     }
   };
 
-  // TODO: Fix handling of overlapping loads.
-  var showSpinner = function(show) {
-    if (show == spinnerShown) {
-      return;
+  
+  var pendingLoads = 0;
+  var totalLoads = 0;
+  var startLoadMonitor = function() {
+    if (!pendingLoads) {
+      spinner.style('display', 'block');      
     }
-    spinnerShown = show;
-    spinner.style('display', show ? 'block' : 'none');
+    pendingLoads++;
+    var loadIndex = totalLoads++;
+    var timeLabel = 'readgraph load[' + loadIndex + ']'
     if ('time' in console) {
-      var timeLabel = 'readgraph loading';
-      if (show) {
-        console.time(timeLabel);
-      } else {
-        console.timeEnd(timeLabel);
-      }
+      console.time(timeLabel);
     }
     if ('timeStamp' in console) {
-      console.timeStamp('readgraph load ' + (show ? 'start' : 'finish'));
+      console.timeStamp(timeLabel + ' start');      
     }
+    
+    // Callers should invoke this callback on completion
+    return function() {
+      pendingLoads--;
+      if (!pendingLoads) {
+        spinner.style('display', 'none');      
+      }
+      if ('time' in console) {
+        console.timeEnd(timeLabel);
+      }
+      if ('timeStamp' in console) {
+        console.timeStamp(timeLabel + ' finish');      
+      }
+    };
   }
-
-  var callXhr = function(url, queryParams, handler, opt_data) {
-    showSpinner(true);
+  
+  var totalReadBytes = 0;
+  var callXhr = function(url, queryParams, handler, opt_monitor, opt_data) {
+    var onComplete = opt_monitor || startLoadMonitor();
     $.getJSON(url, queryParams)
-        .done(function(res) {
+        .done(function(res, status, jqXHR) {
+          totalReadBytes += Number.parseInt(jqXHR.getResponseHeader('Content-Length'));
+          console.log('readgraph load total: ' + Math.round(totalReadBytes/1024) + 'kb');
           var data;
           if (res.reads) {
             // Reads are handled incrementally, but variants aren't yet.
@@ -980,13 +1004,13 @@ var readgraph = new function() {
 
           if (res.nextPageToken) {
             queryParams['pageToken'] = res.nextPageToken;
-            callXhr(url, queryParams, handler, data);
+            callXhr(url, queryParams, handler, onComplete, data);
           } else {
-            showSpinner(false);
+            onComplete();
           }
         })
         .fail(function() {
-          showSpinner(false);
+          onComplete();
         });
   };
 
