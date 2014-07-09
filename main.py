@@ -41,12 +41,14 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 SUPPORTED_BACKENDS = {
   'NCBI' : {'name': 'NCBI',
             'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg/%s?%s',
+            'supportsPartialResponse': True,
             'datasets': {'SRP034507': 'SRP034507', 'SRP029392': 'SRP029392'}},
   'EBI' : {'name': 'EBI',
             'url': 'http://193.62.52.16/%s?%s',
             'datasets': {'All data': 'data'}},
   'LOCAL' : {'name': 'Local',
              'url': 'http://localhost:5000/%s?%s',
+             'supportsPartialResponse': True,
              'datasets': {'All': ''}},
 }
 
@@ -61,6 +63,7 @@ if os.path.isfile(google_api_key_file):
       'url': 'https://www.googleapis.com/genomics/v1beta/%s?key='
              + api_key + '&%s',
       'supportsNameFilter': True,
+      'supportsPartialResponse': True,
       #'supportsCallsets': True,
       'datasets': {'1000 Genomes': '376902546192',
                    'DREAM SMC Challenge': '337315832689',
@@ -96,6 +99,9 @@ class BaseRequestHandler(webapp2.RequestHandler):
   def supports_name_filter(self):
     return SUPPORTED_BACKENDS[self.get_backend()].has_key('supportsNameFilter')
 
+  def supports_partial_response(self):
+    return SUPPORTED_BACKENDS[self.get_backend()].has_key('supportsPartialResponse')
+
   def get_base_api_url(self):
     return SUPPORTED_BACKENDS[self.get_backend()]['url']
 
@@ -126,9 +132,12 @@ class BaseRequestHandler(webapp2.RequestHandler):
     logging.info('get_content {}: {}kb {}s'.format(uri, contentLen/1024, time.clock() - startTime))
     return content
 
-  def write_content(self, path, method='POST', body=None, params=''):
+  def write_response(self, content):
     self.response.headers['Content-Type'] = "application/json"
-    self.response.write(json.dumps(self.get_content(path, method, body, params)))
+    self.response.write(json.dumps(content))
+    
+  def write_content(self, path, method='POST', body=None, params=''):
+    self.write_response(self.get_content(path, method, body, params))
 
 
 class SetSearchHandler(BaseRequestHandler):
@@ -187,15 +196,27 @@ class ReadSearchHandler(BaseRequestHandler):
       'sequenceStart': max(0, int(self.request.get('sequenceStart'))),
       'sequenceEnd': int(self.request.get('sequenceEnd')),
     }
-    fields = self.request.get('fields')
+    readFields = self.request.get('readFields')
     params = ''
-    if fields:
-      params = 'fields=%s' % fields
-      body['maxResults'] = 1024
+    if readFields and self.supports_partial_response():
+        params = 'fields=nextPageToken,reads(%s)' % readFields
+        body['maxResults'] = 1024
     pageToken = self.request.get('pageToken')
     if pageToken:
       body['pageToken'] = pageToken
-    self.write_content('reads/search', body=body, params=params)
+
+    content = self.get_content('reads/search', body=body, params=params)
+
+    # Emulate support for partial responses by supplying only the
+    # requested fields to the client.
+    if readFields and not self.supports_partial_response():
+      fields = readFields.split(',')
+      def filterKeys(dict, keys):
+        return { key: dict[key] for key in keys }
+      newReads = [ filterKeys(read, fields) for read in content['reads']]
+      content['reads'] = newReads
+      
+    self.write_response(content)
 
 
 class VariantSearchHandler(BaseRequestHandler):

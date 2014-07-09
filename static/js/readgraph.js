@@ -901,7 +901,7 @@ var readgraph = new function() {
 
     if (type == READSET_TYPE) {
       var baseFields = opt_bases ? ',originalBases,baseQuality' : '';
-      queryParams.fields = 'nextPageToken,reads(name,position,matePosition,mappingQuality,cigar' + baseFields + ')';
+      queryParams.readFields = 'name,position,matePosition,mappingQuality,cigar' + baseFields;
     }
 
     return queryParams;
@@ -1022,7 +1022,9 @@ var readgraph = new function() {
           if (res.reads) {
             var len = Number.parseInt(jqXHR.getResponseHeader('Content-Length'));
             totalReadBytes += len;
-            console.log('readgraph ' + res.reads.length + ' reads (' + Math.round(len/1024) + 'kb), total ' + Math.round(totalReadBytes/1024) + 'kb');
+            console.log('readgraph ' + res.reads.length
+              + (res.reads.length && 'originalBases' in res.reads[0] ? ' full' : ' partial')
+              + ' reads (' + Math.round(len/1024) + 'kb), total ' + Math.round(totalReadBytes/1024) + 'kb');
             // Reads are handled incrementally, but variants aren't yet.
             // Eventually variants will be updated to follow the same pattern.
             handler(res.reads)
