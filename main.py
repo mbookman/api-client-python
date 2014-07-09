@@ -189,7 +189,8 @@ class ReadSearchHandler(BaseRequestHandler):
     fields = self.request.get('fields')
     params = ''
     if fields:
-      params = 'fields=%s&maxResults=1024' % fields
+      params = 'fields=%s' % fields
+      body['maxResults'] = 1024
     pageToken = self.request.get('pageToken')
     if pageToken:
       body['pageToken'] = pageToken

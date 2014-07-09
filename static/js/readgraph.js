@@ -990,10 +990,11 @@ var readgraph = new function() {
     var onComplete = opt_monitor || startLoadMonitor();
     $.getJSON(url, queryParams)
         .done(function(res, status, jqXHR) {
-          totalReadBytes += Number.parseInt(jqXHR.getResponseHeader('Content-Length'));
-          console.log('readgraph load total: ' + Math.round(totalReadBytes/1024) + 'kb');
           var data;
           if (res.reads) {
+            var len = Number.parseInt(jqXHR.getResponseHeader('Content-Length'));
+            totalReadBytes += len;
+            console.log('readgraph ' + res.reads.length + ' reads (' + Math.round(len/1024) + 'kb), total ' + Math.round(totalReadBytes/1024) + 'kb');
             // Reads are handled incrementally, but variants aren't yet.
             // Eventually variants will be updated to follow the same pattern.
             handler(res.reads)
