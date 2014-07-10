@@ -359,6 +359,7 @@ var readgraph = new function() {
   };
 
   var selectSequence = function(sequence) {
+    readCache.clear();
     currentSequence = sequence;
     $('.sequence').removeClass('active');
     var div = $('#' + sequenceId(sequence.name)).addClass('active');
