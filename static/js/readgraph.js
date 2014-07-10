@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+"use strict";
 
 var readgraph = new function() {
   var cigarMatcher = /([0-9]+[MIDNSHP=X])/gi
@@ -881,6 +882,9 @@ var readgraph = new function() {
     return queryParams;
   };
 
+  var MIN_CACHE_FACTOR = 0.5;
+  var MAX_CACHE_FACTOR = 1;
+
   var ensureReadsCached = function(start, end, bases) {
 
     // Cache additional data than just what's requested so that we can do
@@ -888,18 +892,16 @@ var readgraph = new function() {
     // Smaller values of the cache factor result in more redundant read
     // operations, larger values use more memory and reduce the likelihood of
     // temporarily seeing missing reads.
-    const minCacheFactor = 0.5;
-    const maxCacheFactor = 1;
     var addingBases = bases && !readCache.wantBases;
     var windowSize = end - start;
-    if (start - windowSize * minCacheFactor >= readCache.start
-        && end + windowSize * minCacheFactor <= readCache.end
+    if (start - windowSize * MIN_CACHE_FACTOR >= readCache.start
+        && end + windowSize * MIN_CACHE_FACTOR <= readCache.end
         && !addingBases) {
       return;
     }
 
-    var desiredStart = start - windowSize * maxCacheFactor;
-    var desiredEnd = end + windowSize * maxCacheFactor;
+    var desiredStart = start - windowSize * MAX_CACHE_FACTOR;
+    var desiredEnd = end + windowSize * MAX_CACHE_FACTOR;
 
     if (overlaps(desiredStart, desiredEnd, readCache.start, readCache.end)
         && !addingBases) {
