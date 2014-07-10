@@ -46,13 +46,6 @@ var readgraph = new function() {
   var readTrackLength = 0;
   var callsetTrackLength = 0;
 
-  var readCache = {
-      desireBases: false,
-      desiredStart: 0,
-      desiredEnd: 0,
-      readsById: {}
-  };
-
   // Dom elements
   var svg, axisGroup, readGroup, readDiv, variantDiv, spinner = null;
   var hoverline, positionIndicator, positionIndicatorBg, positionIndicatorText;
@@ -79,11 +72,6 @@ var readgraph = new function() {
   var getScaleLevel = function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
   };
-
-  // Return whether two sequences overlap at all
-  var overlaps = function(start1, end1, start2, end2) {
-    return start1 < end2 && end1 > start2;
-  }
 
   // Called at high frequency for any navigation of the UI (not just zooming).
   // Should only do low-latency operations.
@@ -468,7 +456,7 @@ var readgraph = new function() {
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
 
-    var readsInView = d3.values(readCache.readsById).filter(function(read) {
+    var readsInView = readCache.getReads().filter(function(read) {
       return overlaps(read.position, read.end, sequenceStart, sequenceEnd);
     });
     var reads = readGroup.selectAll(".read").data(readsInView,
@@ -766,18 +754,16 @@ var readgraph = new function() {
       }
       newReadIds[read.id] = true;
 
-      // Skip this read if we already have it.  Ideally the API would let us
-      // exclude the reads we already have.
-      if (read.id in readCache.readsById) {
-        if (('originalBases' in read) == ('originalBases' in readCache.readsById[read.id])) {
-          return;
-        }
+      // Skip this read if we already have exactly it.
+      if (readCache.hasRead(read)) {
+        return;
       }
 
       // Interpret the cigar
       // TODO: Compare the read against a reference as well
       read.name = read.name || read.id;
       read.readPieces = [];
+
       if (!read.cigar) {
         // Hack for unmapped reads
         read.length = 0;
@@ -797,7 +783,7 @@ var readgraph = new function() {
         });
       };
 
-      var bases;
+      var bases = null;
       if (read.originalBases) {
         bases = read.originalBases.split('');
       }
@@ -845,36 +831,24 @@ var readgraph = new function() {
         }
       }
 
+      // Remove data that's now redundant with readPieces.
+      if (bases) {
+        delete read.originalBases;
+        delete read.baseQuality;
+      }
+
       read.end = read.position + read.length;
       // The 5th flag bit indicates this read is reversed
       read.reverse = (read.flags >> 4) % 2 == 1;
 
       // Create or update the entry in the cache, assuming we still want it.
-      // Note that we can't easily do this test above because we need to compute
-      // read.end first.
-      if (overlaps(read.position, read.end, readCache.desiredStart, readCache.desiredEnd)
-              && ('originalBases' in read) == readCache.desireBases) {
-        var existingRead = readCache.readsById[read.id];
-        if (existingRead) {
-          read.yOrder = existingRead.yOrder;
-        } else {
-          // Find the lowest available track for this read.
-          // TODO: Use a more efficient algorithm.
-          trackUnavailable = [];
-          $.each(readCache.readsById, function(id, read2) {
-            if (overlaps(read.position, read.end, read2.position, read2.end)) {
-              trackUnavailable[read2.yOrder] = true;
-            }
-          });
-          for(read.yOrder = 0; trackUnavailable[read.yOrder]; read.yOrder++) {
-          }
-        }
-        readCache.readsById[read.id] = read;
-      }
+      // Note that we can't easily test to see if we still want the read before
+      // doing the work above because we need to compute read.end.
+      readCache.addOrUpdateRead(read);
     });
 
     updateDisplay();
-  }
+  };
 
   // Data loading
 
@@ -909,20 +883,6 @@ var readgraph = new function() {
 
   var ensureReadsCached = function(start, end, bases) {
 
-    // Are we switching between base and read view?
-    var addBases = false;
-    if (bases != readCache.desireBases) {
-      if (bases) {
-        addBases = true;
-      } else {
-        // clear any stored bases to avoid potentially holding onto a lot of
-        // extra memory indefinitely
-        $.each(readCache.readsById, function(id, read) {
-          read.readPieces = [];
-        });
-      }
-    }
-
     // Cache additional data than just what's requested so that we can do
     // some small navigations quickly and without incurring redudant transfers.
     // Smaller values of the cache factor result in more redundant read
@@ -930,41 +890,32 @@ var readgraph = new function() {
     // temporarily seeing missing reads.
     const minCacheFactor = 0.5;
     const maxCacheFactor = 1;
+    var addingBases = bases && !readCache.wantBases;
     var windowSize = end - start;
-    if (start - windowSize * minCacheFactor >= readCache.desiredStart
-        && end + windowSize * minCacheFactor <= readCache.desiredEnd
-        && !addBases) {
+    if (start - windowSize * minCacheFactor >= readCache.start
+        && end + windowSize * minCacheFactor <= readCache.end
+        && !addingBases) {
       return;
     }
-
 
     var desiredStart = start - windowSize * maxCacheFactor;
     var desiredEnd = end + windowSize * maxCacheFactor;
 
-    if (overlaps(desiredStart, desiredEnd, readCache.desiredStart, readCache.desiredEnd)
-        && !addBases) {
+    if (overlaps(desiredStart, desiredEnd, readCache.start, readCache.end)
+        && !addingBases) {
       // Don't re-request the reads we already have.  This will still retransfer
       // reads which overlap the boundaries, but that should be small in practice.
-      if (desiredStart < readCache.desiredStart) {
-        queryData(desiredStart, readCache.desiredStart, bases);
+      if (desiredStart < readCache.start) {
+        queryData(desiredStart, readCache.start, bases);
       }
-      if (desiredEnd > readCache.desiredEnd) {
-        queryData(readCache.desiredEnd, desiredEnd, bases);
+      if (desiredEnd > readCache.end) {
+        queryData(readCache.end, desiredEnd, bases);
       }
     } else {
       queryData(desiredStart, desiredEnd, bases);
     }
 
-    readCache.desiredStart = desiredStart;
-    readCache.desiredEnd = desiredEnd;
-    readCache.desireBases = bases;
-
-    // Discard any cached reads that are now entirely outside our desired window.
-    $.each(readCache.readsById, function(id, read) {
-      if (read.position > readCache.desiredEnd || read.end < readCache.desiredStart) {
-        delete readCache.readsById[id];
-      }
-    });
+    readCache.setRange(desiredStart, desiredEnd, bases);
   };
 
   var queryData = function(start, end, bases) {
@@ -1027,7 +978,7 @@ var readgraph = new function() {
               + ' reads (' + Math.round(len/1024) + 'kb), total ' + Math.round(totalReadBytes/1024) + 'kb');
             // Reads are handled incrementally, but variants aren't yet.
             // Eventually variants will be updated to follow the same pattern.
-            handler(res.reads)
+            handler(res.reads);
           } else {
             data = (opt_data || []).concat(res.variants || []);
             handler(data);

@@ -45,6 +45,12 @@ function showAlert(message, type) {
   }, type == 'danger' ? 5000 : 3000);
 }
 
+function assert(condition) {
+  if (!condition) {
+    console.error('assert failed');
+  }
+}
+
 function closeButton() {
   return $('<button type="button" class="close" aria-hidden="true">&times;</button>');
 }
