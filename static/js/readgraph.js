@@ -100,7 +100,7 @@ var readgraph = new function() {
       var sequenceEnd = parseInt(x.domain()[1]);
       ensureReadsCached(sequenceStart, sequenceEnd, scaleLevel > 5);
     }
-  }
+  };
 
   var moveToSequencePosition = function(position) {
     position = Math.max(0, position);
@@ -930,8 +930,6 @@ var readgraph = new function() {
     }
     if (variantParams) {
       callXhr('/api/variants', variantParams, setVariants);
-    } else {
-      setVariants([]);
     }
   };
 
