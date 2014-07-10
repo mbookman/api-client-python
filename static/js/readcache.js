@@ -52,6 +52,10 @@ var readCache = new function() {
   // A map from read ID to read object.
   var readsById = {};
 
+  // An array of RBTrees, one per track, containing all the reads assigned to
+  // that track by position.
+  var yTracks = [];
+
   /*
    * Returns all the reads in the cache.
    */
@@ -67,6 +71,15 @@ var readCache = new function() {
     start = 0;
     end = 0;
     readsById = {};
+    yTracks = [];
+  };
+
+  // Remove a specific read from the cache.
+  function removeRead(read) {
+    var removed = yTracks[read.yOrder].remove(read);
+    assert(removed);
+    assert(readsById[read.id] === read);
+    delete readsById[read.id];
   };
 
   /*
@@ -74,6 +87,32 @@ var readCache = new function() {
    * necessary.
    */
   this.setRange = function(newStart, newEnd, newBases) {
+    // Find all reads outside the new range and remove them.
+    // Ideally our RBTree implementation would just support
+    // efficiently removing ranges of nodes, or removing given an iterator.
+    for (var y = 0; y < yTracks.length; y++) {
+      var tree = yTracks[y];
+
+      // Remove nodes from the front as long as they're outside our range.
+      for(var read = tree.min(); read && read.end < newStart; read = tree.min()) {
+        assert(read.yOrder == y);
+        removeRead(read);
+      }
+
+      // Remove nodes from the end as long as they're outside our range.
+      for(var read = tree.max(); read && read.position >= newEnd; read = tree.max()) {
+        assert(read.yOrder == y);
+        removeRead(read);
+      }
+    }
+
+    // Discard stored bases if we don't want them anymore.
+    if (wantBases && !newBases) {
+      $.each(readsById, function(id, read) {
+        read.readPieces = [];
+      });
+    }
+
     // Discard any cached reads that are now entirely outside our desired window.
     $.each(readsById, function(id, read) {
       if (!overlaps(read.position, read.end, newStart, newEnd)) {
@@ -100,6 +139,16 @@ var readCache = new function() {
     return false;
   };
 
+  // Comparer function for the RBTrees
+  function readOverlapComparer(r1, r2) {
+    if (overlaps(r1.position, r1.end, r2.position, r2.end)) {
+      return 0;  // reads that overlap are considered "equal"
+    }
+    // Since we know that no two reads in the tree overlap, we can sort
+    // just by the start position.
+    return r1.position - r2.position;
+  }
+
   /*
    * Adds the supplied read to the cache if it's still relevant, assigning a
    * free yOrder property to thr read.
@@ -121,16 +170,27 @@ var readCache = new function() {
     var existingRead = readsById[read.id];
     if (existingRead) {
       read.yOrder = existingRead.yOrder;
+      var removed = yTracks[read.yOrder].remove(existingRead);
+      assert(removed);
+      var inserted = yTracks[read.yOrder].insert(read);
+      assert(inserted);
     } else {
       // Find the lowest available track for this read.
-      // TODO: Use a more efficient algorithm.
-      var trackUnavailable = [];
-      $.each(readsById, function(id, read2) {
-        if (overlaps(read.position, read.end, read2.position, read2.end)) {
-          trackUnavailable[read2.yOrder] = true;
+      assert(!('yOrder' in read));
+      for(read.yOrder = 0;; read.yOrder++) {
+        if (read.yOrder < yTracks.length) {
+          if (yTracks[read.yOrder].insert(read)) {
+            // Successfully inserted into this track.
+            break;
+          }
+        } else {
+          // Need a new track.
+          var newTree = new RBTree(readOverlapComparer);
+          yTracks[read.yOrder] = newTree;
+          var inserted = newTree.insert(read);
+          assert(inserted);
+          break;
         }
-      });
-      for(read.yOrder = 0; trackUnavailable[read.yOrder]; read.yOrder++) {
       }
     }
     readsById[read.id] = read;
