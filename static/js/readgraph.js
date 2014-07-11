@@ -729,8 +729,7 @@ var readgraph = new function() {
     var newReadIds = {};
 
     $.each(reads, function(readi, read) {
-      // TODO: Nobody is handing back actually unique ids right now
-      read.id = (read.id || read.name) + read.position + read.cigar;
+      read.id = read.id || (read.name + read.position + read.cigar);
 
       if (newReadIds[read.id]) {
         showError('There is more than one read with the ID ' + read.id +
@@ -860,7 +859,9 @@ var readgraph = new function() {
 
     if (type == READSET_TYPE) {
       var baseFields = opt_bases ? ',originalBases,baseQuality' : '';
-      queryParams.readFields = 'name,position,matePosition,mappingQuality,cigar' + baseFields;
+      // TODO: Google Read ID is rather long (increases transfer volume by ~50%
+      // in read view).  Should we synthesize our own instead?
+      queryParams.readFields = 'id,name,position,matePosition,mappingQuality,cigar' + baseFields;
     }
 
     return queryParams;
