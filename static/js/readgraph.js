@@ -20,14 +20,14 @@ var readgraph = new function() {
 
   var width = 0;
   var height = 0;
-  var margin = 40;
+  var bottomMargin = 40;
   var totalTracks = 0;
 
   var textHeight, textWidth = 0;
 
   var y = d3.scale.linear();
   var x = d3.scale.linear();
-  var xAxis = d3.svg.axis().ticks(5).scale(x);
+  var xAxis = d3.svg.axis().ticks(3).scale(x);
   var xFormat = d3.format(',f');
 
   var zoom = null;
@@ -59,8 +59,8 @@ var readgraph = new function() {
     var middleX = x.invert(width / 2);
     var origScale = zoom.scale();
 
-    y.range([margin, height - margin*2]).domain([totalTracks, -1]);
-    x.rangeRound([margin, width - margin]).domain([0, currentSequence.length]);
+    y.range([0, height - bottomMargin]).domain([totalTracks, -1]);
+    x.rangeRound([0, width]).domain([0, currentSequence.length]);
     minRange = (width / textWidth / 2); // Twice the zoom of individual bases
     maxZoom = Math.ceil(Math.max(1, currentSequence.length / minRange));
 
@@ -74,9 +74,8 @@ var readgraph = new function() {
     moveToSequencePosition(middleX);
 
     svg.select(".axis").call(xAxis);
-    axisGroup.attr('transform', 'translate(0,' + (height - margin) + ')');
-    positionIndicatorBg.attr('height', height - margin);
-    positionIndicatorText.attr('y', height - margin - textHeight);
+    axisGroup.attr('transform', 'translate(0,' + (height - bottomMargin) + ')');
+    positionIndicatorBg.attr('height', height - bottomMargin);
     hoverline.attr("y2", height);
     spinner.attr('x', width - 16);
   };
@@ -172,8 +171,8 @@ var readgraph = new function() {
 
     svg.on("mousemove", function() {
       var mouseX = d3.mouse(this)[0];
-      mouseX = Math.max(margin, mouseX);
-      mouseX = Math.min(width - margin, mouseX);
+      mouseX = Math.max(0, mouseX);
+      mouseX = Math.min(width, mouseX);
 
       if (mouseX > width * 2/3) {
         hovertext.attr('x', mouseX - 3).style('text-anchor', 'end');
@@ -208,7 +207,7 @@ var readgraph = new function() {
     positionIndicatorText = positionIndicator.append('text')
         .attr('class', 'positionIndicator text')
         .attr('x', 3)
-        .attr('y', height - margin - textHeight);
+        .attr('y', 20);
     toggleVisibility(positionIndicator, false);
 
     // Groups
@@ -574,11 +573,11 @@ var readgraph = new function() {
   var readOutlinePoints = function(read, i) {
     var yTracksLength = y.domain()[0];
     var barHeight = Math.min(30, Math.max(2,
-        (height - margin * 3) / yTracksLength - 5));
+        (height - bottomMargin) / yTracksLength - 5));
 
     var pointWidth = 10;
-    var startX = Math.max(margin, x(read.position));
-    var endX = Math.min(width - margin, x(read.end));
+    var startX = Math.max(0, x(read.position));
+    var endX = Math.min(width, x(read.end));
 
     var startY = y(this.parentNode.__data__.yOrder);
     var endY = startY + barHeight;
