@@ -508,10 +508,16 @@ var readgraph = new function() {
       readLetters.remove();
 
     } else if (baseView) {
-      readLetters = readLetters.data(function(read, i) {
+      var filterLetters = function(read) {
         return read.readPieces.filter(function(letter) {
           return letter.rx >= sequenceStart && letter.rx < sequenceEnd;
         });
+      };
+      readLetters = readLetters.data(filterLetters, function(letter, i) {
+        // Although the docs don't say so explicitly, it appears that the
+        // key only needs to be unique within the group (read) as opposed to
+        // across all groups.
+        return letter.rx;
       });
 
       readLetters.enter().append('text')
