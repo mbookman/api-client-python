@@ -16,7 +16,7 @@ limitations under the License.
 "use strict";
 
 var readgraph = new function() {
-  var cigarMatcher = /([0-9]+[MIDNSHP=X])/gi
+  var cigarMatcher = /([0-9]+[MIDNSHP=X])/gi;
 
   var width = 0;
   var height = 0;
@@ -59,9 +59,15 @@ var readgraph = new function() {
     y.range([margin, height - margin*2]).domain([totalTracks, -1]);
     x.rangeRound([margin, width - margin]);
     minRange = (width / textWidth / 2); // Twice the zoom of individual bases
-    zoom.size([width, height]);
-    svg.select(".axis").call(xAxis);
+    maxZoom = Math.ceil(Math.max(1, currentSequence.length / minRange));
+    zoomLevelChange = Math.pow(maxZoom, 1/6);
 
+    // TODO: minZoom should be 1, but it's capped to read level for now since
+    // we don't support coverage data.
+    var minZoom = (currentSequence.length / getMaxDomainSize()) * 1.1;
+    zoom.x(x).scaleExtent([minZoom, maxZoom]).size([width, height]);
+
+    svg.select(".axis").call(xAxis);
     axisGroup.attr('transform', 'translate(0,' + (height - margin) + ')');
     positionIndicatorBg.attr('height', height - margin);
     positionIndicatorText.attr('y', height - margin - textHeight);
@@ -69,8 +75,29 @@ var readgraph = new function() {
     spinner.attr('x', width - 16);
   };
 
-  var getScaleLevel = function() {
-    return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
+  // The number of bases currently in view.
+  var domainSize = function() {
+    var curDomain = x.domain();
+    return curDomain[1] - curDomain[0];
+  };
+
+  var shouldShowBases = function() {
+    // We want to show bases whenever the text would fit.
+    return domainSize() < width / textWidth;
+  };
+
+  // TODO: we only need this function until we have a coverage view.
+  var getMaxDomainSize = function() {
+    // We need to avoid requesting huge amounts of data and crowding the UI
+    // with tiny reads.  But it's OK to load more reads on larger screens (since
+    // devices with larger screens tend to also have better network and CPU).
+    var typicalReadSize = 100;
+    var minPixelsPerTypicalRead = 10;
+    return typicalReadSize * width / minPixelsPerTypicalRead;
+  };
+
+  var shouldShowReads = function() {
+    return domainSize() <= getMaxDomainSize();
   };
 
   // Called at high frequency for any navigation of the UI (not just zooming).
@@ -83,9 +110,6 @@ var readgraph = new function() {
     zoom.translate([tx, 0]);
     svg.select(".axis").call(xAxis);
 
-    // Update scale bar
-    // TODO: remove scale bar code
-    d3.select('.zoomLevel').attr('y', (6 - getScaleLevel()) * 24 + 38);
     updateDisplay();
   };
 
@@ -94,11 +118,10 @@ var readgraph = new function() {
   // called frequently.
   var handleZoomEnd = function() {
     handleZoom();
-    var scaleLevel = getScaleLevel();
-    if (scaleLevel >= 4) {
+    if (shouldShowReads()) {
       var sequenceStart = parseInt(x.domain()[0]);
       var sequenceEnd = parseInt(x.domain()[1]);
-      ensureReadsCached(sequenceStart, sequenceEnd, scaleLevel > 5);
+      ensureReadsCached(sequenceStart, sequenceEnd, shouldShowBases());
     }
   };
 
@@ -185,23 +208,7 @@ var readgraph = new function() {
     // Groups
     readGroup = svg.append('g').attr('class', 'readGroup');
 
-    // Zooming
-    var changeZoomLevel = function(levelChange) {
-      var newZoom = zoom.scale();
-      // Keep the graph centered on the middle position
-      var middleX = x.invert(width / 2);
-
-      if (levelChange > 0) {
-        newZoom = zoom.scale() * zoomLevelChange;
-      } else {
-        newZoom = zoom.scale() / zoomLevelChange;
-      }
-      newZoom = Math.max(1, newZoom);
-      newZoom = Math.min(maxZoom, newZoom);
-      zoom.scale(newZoom);
-      moveToSequencePosition(middleX);
-    };
-
+    // Zooming / panning
     zoom = d3.behavior.zoom().on("zoom", handleZoom).on("zoomend", handleZoomEnd);;
     svg.call(zoom);
 
@@ -346,10 +353,8 @@ var readgraph = new function() {
     }
 
     // Axis and zoom
-    x.domain([0, sequence['length']]);
-    maxZoom = Math.ceil(Math.max(1, sequence['length'] / minRange));
-    zoomLevelChange = Math.pow(maxZoom, 1/6);
-    zoom.x(x).scaleExtent([1, maxZoom]).size([width, height]);
+    x.domain([0, currentSequence['length']]);
+    updateSize();
 
     $('#jumpDiv').show();
   };
@@ -414,12 +419,14 @@ var readgraph = new function() {
   // or zoom operation, and so this must be very fast (<16ms for 60fps dragging).
   // This shouldn't create or manipulate any SVG/DOM objects for things not being
   // displayed (eg. offscreen letters).
+  // TODO: This still isn't fast enough for smooth panning/zooming (selectAll
+  // and style update in particular is quite expensive with lots of data).
+  // Investigate D3's smooth interpolated zoom support.
   var updateDisplay = function() {
-    var scaleLevel = getScaleLevel();
-    var summaryView = scaleLevel < 2;
-    var coverageView = scaleLevel == 2 || scaleLevel == 3;
-    var readView = scaleLevel == 4 || scaleLevel == 5;
-    var baseView = scaleLevel > 5;
+    var summaryView = false;
+    var coverageView = false;
+    var baseView = shouldShowBases();
+    var readView = !baseView && shouldShowReads();
 
     var sequenceStart = parseInt(x.domain()[0]);
     var sequenceEnd = parseInt(x.domain()[1]);
@@ -561,14 +568,15 @@ var readgraph = new function() {
     var startX = Math.max(margin, x(read.position));
     var endX = Math.min(width - margin, x(read.end));
 
-    if (startX > endX - pointWidth) {
-      return '0,0';
-    }
-
     var startY = y(this.parentNode.__data__.yOrder);
     var endY = startY + barHeight;
     var midY = (startY + barHeight / 2);
 
+    if (startX > endX - pointWidth) {
+      pointWidth = endX - startX;
+      // Return a little triangle for very small reads to ensure something is
+      // visible.
+    }
 
     if (read.reverse) {
       startX += pointWidth;
@@ -691,8 +699,7 @@ var readgraph = new function() {
         .data(function(variant, i) { return [variant];});
     outlines.enter().append('line').attr('class', 'outline');
 
-    var baseView = getScaleLevel() > 5;
-    if (baseView) {
+    if (shouldShowBases()) {
       var bases = variantDivs.selectAll(".letter")
           .data(function(variant, i) { return [variant];});
 
