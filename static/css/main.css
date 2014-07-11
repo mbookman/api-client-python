@@ -58,12 +58,12 @@ body {
   bottom: 100px;
 }
 
-#chr {
+#sequence-title {
   font-size: 20px;
   margin-bottom: 5px;
 }
 
-#posn {
+#poslabel {
   color: grey;
 }
 

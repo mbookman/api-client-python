@@ -349,6 +349,7 @@ var readgraph = new function() {
     $('.sequence').removeClass('active');
     var div = $('#' + sequenceId(sequence.name)).addClass('active');
 
+    $('#sequence-title').text(sequence.title);
     $('#graph').show();
     if (!setupRun) {
       setup();
@@ -377,21 +378,21 @@ var readgraph = new function() {
     mergedSequences = _.uniq(allSequences, false, getSequenceName);
 
     $.each(mergedSequences, function(i, sequence) {
-      var title, imageUrl;
+      var imageUrl;
 
       if (sequence.name.indexOf('X') != -1) {
-        title = 'Chromosome X';
+        sequence.title = 'Chromosome X';
         imageUrl = makeImageUrl('chrX');
       } else if (sequence.name.indexOf('Y') != -1) {
-        title = 'Chromosome Y';
+        sequence.title = 'Chromosome Y';
         imageUrl = makeImageUrl('chrY');
       } else {
         var number = sequence.name.replace(/\D/g,'');
         if (!!number && number < 23) {
-          title = 'Chromosome ' + number;
+          sequence.title = 'Chromosome ' + number;
           imageUrl = makeImageUrl('chr' + number);
         } else {
-          title = sequence.name;
+          sequence.title = sequence.name;
         }
       }
 
@@ -403,7 +404,7 @@ var readgraph = new function() {
       if (imageUrl) {
         $('<img>', {'class': 'pull-left', src: imageUrl}).appendTo(sequenceDiv);
       }
-      $('<div>', {'class': 'title'}).text(title).appendTo(sequenceDiv);
+      $('<div>', {'class': 'title'}).text(sequence.title).appendTo(sequenceDiv);
       if (setObjects.length != setCount) {
         $('<div>', {'class': 'badge pull-right'}).text(setCount)
           .appendTo(sequenceDiv);
@@ -431,8 +432,10 @@ var readgraph = new function() {
     var baseView = shouldShowBases();
     var readView = !baseView && shouldShowReads();
 
-    var sequenceStart = x.domain()[0];
-    var sequenceEnd = x.domain()[1];
+    var sequenceStart = Math.floor(x.domain()[0]);
+    var sequenceEnd = Math.floor(x.domain()[1]);
+    $('#pos-start').text(sequenceStart);
+    $('#pos-end').text(sequenceEnd);
 
     var readsInView = readCache.getReads().filter(function(read) {
       return overlaps(read.position, read.end, sequenceStart, sequenceEnd);
