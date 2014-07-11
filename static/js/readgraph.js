@@ -32,7 +32,6 @@ var readgraph = new function() {
 
   var zoom = null;
   var maxZoom = 1;
-  var zoomLevelChange = 1;
   var minRange = 0;
 
   var opacity = d3.scale.linear().domain([0, 93]).range([.2, 1]);
@@ -56,16 +55,23 @@ var readgraph = new function() {
     width = $('#graph').width();
     totalTracks = (height - 100) / textHeight;
 
+    // Update the axis while keeping the graph centered on the middle position.
+    var middleX = x.invert(width / 2);
+    var origScale = zoom.scale();
+
     y.range([margin, height - margin*2]).domain([totalTracks, -1]);
-    x.rangeRound([margin, width - margin]);
+    x.rangeRound([margin, width - margin]).domain([0, currentSequence.length]);
     minRange = (width / textWidth / 2); // Twice the zoom of individual bases
     maxZoom = Math.ceil(Math.max(1, currentSequence.length / minRange));
-    zoomLevelChange = Math.pow(maxZoom, 1/6);
 
     // TODO: minZoom should be 1, but it's capped to read level for now since
     // we don't support coverage data.
     var minZoom = (currentSequence.length / getMaxDomainSize()) * 1.1;
-    zoom.x(x).scaleExtent([minZoom, maxZoom]).size([width, height]);
+    origScale = Math.max(origScale, minZoom);
+    origScale = Math.min(origScale, maxZoom);
+    zoom.x(x).scaleExtent([minZoom, maxZoom]).size([width, height]).scale(origScale);
+
+    moveToSequencePosition(middleX);
 
     svg.select(".axis").call(xAxis);
     axisGroup.attr('transform', 'translate(0,' + (height - margin) + ')');
@@ -127,7 +133,7 @@ var readgraph = new function() {
 
   var moveToSequencePosition = function(position) {
     position = Math.max(0, position);
-    position = Math.min(currentSequence['length'], position);
+    position = Math.min(currentSequence.length, position);
 
     var newX = x(position);
     newX = zoom.translate()[0] - newX + width / 2;
@@ -316,10 +322,6 @@ var readgraph = new function() {
     positionIndicator.selectAll('text')
         .text(baseView ? (snp || xFormat(position)) : '');
 
-    var zoomLevel = baseView ? maxZoom : maxZoom / zoomLevelChange; // Read level
-    if (zoom.scale() != zoomLevel) {
-      zoom.scale(zoomLevel);
-    }
     moveToSequencePosition(position);
     handleZoomEnd();
   };
@@ -353,8 +355,9 @@ var readgraph = new function() {
     }
 
     // Axis and zoom
-    x.domain([0, currentSequence['length']]);
+    x.domain([0, currentSequence.length]);
     updateSize();
+    zoom.scale(maxZoom);
 
     $('#jumpDiv').show();
   };
@@ -428,8 +431,8 @@ var readgraph = new function() {
     var baseView = shouldShowBases();
     var readView = !baseView && shouldShowReads();
 
-    var sequenceStart = parseInt(x.domain()[0]);
-    var sequenceEnd = parseInt(x.domain()[1]);
+    var sequenceStart = x.domain()[0];
+    var sequenceEnd = x.domain()[1];
 
     var readsInView = readCache.getReads().filter(function(read) {
       return overlaps(read.position, read.end, sequenceStart, sequenceEnd);
