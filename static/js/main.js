@@ -42,7 +42,7 @@ function showAlert(message, type) {
   alert.css('margin-left', -1 * alert.width()/2);
 
   setTimeout(function() {
-    alert.alert('close')
+    alert.alert('close');
   }, type == 'danger' ? 5000 : 3000);
 }
 
@@ -326,5 +326,5 @@ $(document).ready(function() {
     return false;
   });
 
-  searchSets();
+  //searchSets();
 });

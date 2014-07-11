@@ -19,12 +19,13 @@ var readgraph = new function() {
   var cigarMatcher = /([0-9]+[MIDNSHP=X])/gi
 
   var width = 0;
-  var height = 800;
+  var height = 0;
   var margin = 40;
+  var totalTracks = 0;
 
   var textHeight, textWidth = 0;
 
-  var y = d3.scale.linear().range([margin, height - margin*2]);
+  var y = d3.scale.linear();
   var x = d3.scale.linear();
   var xAxis = d3.svg.axis().ticks(5).scale(x);
   var xFormat = d3.format(',f');
@@ -35,7 +36,6 @@ var readgraph = new function() {
   var minRange = 0;
 
   var opacity = d3.scale.linear().domain([0, 93]).range([.2, 1]);
-  var unsupportedMessage = null;
 
   // Current state
   // Format: {id, type, backend, sequences}
@@ -51,23 +51,22 @@ var readgraph = new function() {
   var svg, axisGroup, readGroup, readDiv, variantDiv, spinner = null;
   var hoverline, positionIndicator, positionIndicatorBg, positionIndicatorText;
 
-  var updateHeight = function() {
-    height = (readTrackLength + callsetTrackLength) * textHeight + 100;
-    height = Math.max(height, 450);
-    var totalTracks = (height - 100) / textHeight;
+  var updateSize = function() {
+    height = $('#graph').height();
+    width = $('#graph').width();
+    totalTracks = (height - 100) / textHeight;
 
     y.range([margin, height - margin*2]).domain([totalTracks, -1]);
-    $('#graph').height(height);
+    x.rangeRound([margin, width - margin]);
+    minRange = (width / textWidth / 2); // Twice the zoom of individual bases
+    zoom.size([width, height]);
+    svg.select(".axis").call(xAxis);
 
-    // TODO: Reduce duplicate height setting code
     axisGroup.attr('transform', 'translate(0,' + (height - margin) + ')');
     positionIndicatorBg.attr('height', height - margin);
     positionIndicatorText.attr('y', height - margin - textHeight);
     hoverline.attr("y2", height);
-
-    zoom.size([width, height]);
-
-    return totalTracks;
+    spinner.attr('x', width - 16);
   };
 
   var getScaleLevel = function() {
@@ -85,6 +84,7 @@ var readgraph = new function() {
     svg.select(".axis").call(xAxis);
 
     // Update scale bar
+    // TODO: remove scale bar code
     d3.select('.zoomLevel').attr('y', (6 - getScaleLevel()) * 24 + 38);
     updateDisplay();
   };
@@ -123,10 +123,6 @@ var readgraph = new function() {
     textHeight = bbox.height;
     text.remove();
 
-    width = $('#graph').width();
-    x.rangeRound([margin, width - margin]);
-    minRange = (width / textWidth / 2); // Twice the zoom of individual bases
-
     readDiv = $('#readDiv');
     variantDiv = $('#variantDiv');
 
@@ -134,18 +130,12 @@ var readgraph = new function() {
     // Svg init
     // Reads Axis
     axisGroup = svg.append('g')
-        .attr('transform', 'translate(0,' + (height - margin) + ')')
         .attr('class', 'axis');
-
-    // Unsupported message
-    unsupportedMessage = addText(svg, 'This zoom level is coming soon!',
-        width/2, height/4);
 
     // Hover line
     hoverline = svg.append("line")
         .attr("class", "hover hoverline")
-        .attr("x1", 0).attr("x2", 0)
-        .attr("y1", 0).attr("y2", height);
+        .attr("x1", 0).attr("x2", 0);
 
     var hovertext = svg.append('text')
         .attr("class", "hover hovertext")
@@ -175,7 +165,7 @@ var readgraph = new function() {
             }, ""));
       }
 
-      hoverline.attr("x1", mouseX).attr("x2", mouseX)
+      hoverline.attr("x1", mouseX).attr("x2", mouseX);
     });
 
     // Position indicator
@@ -185,7 +175,7 @@ var readgraph = new function() {
     positionIndicatorBg = positionIndicator.append('rect')
         .attr('class', 'positionIndicator background')
         .attr('x', 0).attr('y', 0)
-        .attr('width', textWidth * 1.5).attr('height', height - margin);
+        .attr('width', textWidth * 1.5);
     positionIndicatorText = positionIndicator.append('text')
         .attr('class', 'positionIndicator text')
         .attr('x', 3)
@@ -194,7 +184,6 @@ var readgraph = new function() {
 
     // Groups
     readGroup = svg.append('g').attr('class', 'readGroup');
-    var zoomGroup = svg.append('g').attr('class', 'zoomGroup');
 
     // Zooming
     var changeZoomLevel = function(levelChange) {
@@ -213,31 +202,18 @@ var readgraph = new function() {
       moveToSequencePosition(middleX);
     };
 
-    zoom = d3.behavior.zoom().size([width, height]).on("zoom", handleZoom).on("zoomend", handleZoomEnd);;
+    zoom = d3.behavior.zoom().on("zoom", handleZoom).on("zoomend", handleZoomEnd);;
     svg.call(zoom);
 
-    // Zoom background
-    zoomGroup.append('rect')
-        .attr('x', 23).attr('y', 35)
-        .attr('width', 66).attr('height', 170);
-
-    addImage(zoomGroup, 'zoom-bar.png', 10, 201, 7, 10);
-    addImage(zoomGroup, 'zoom-level.png', 22, 15, 2, 183, null, 'zoomLevel');
-    addImage(zoomGroup, 'zoom-plus.png', 25, 25, 0, 10, function() {
-      changeZoomLevel(1);
-    });
-    addImage(zoomGroup, 'zoom-minus.png', 25, 25, 0, 200, function() {
-      changeZoomLevel(-1);
-    });
-    var zoomTextX = 23;
-    addText(zoomGroup, 'Bases', zoomTextX, 50);
-    addText(zoomGroup, 'Reads', zoomTextX, 98);
-    addText(zoomGroup, 'Coverage', zoomTextX, 147);
-    addText(zoomGroup, 'Summary', zoomTextX, 195);
-
     // Spinner
-    spinner = addImage(readGroup, 'spinner.gif', 16, 16, width - 16, 0);
+    spinner = addImage(readGroup, 'spinner.gif', 16, 16, 0, 0);
     spinner.style('display', 'none');
+
+    $(window).resize(function() {
+      updateSize();
+      updateDisplay();
+    });
+    updateSize();
   };
 
   var chrLocation = /^(.*):(\d*)$/;
@@ -364,14 +340,6 @@ var readgraph = new function() {
     $('.sequence').removeClass('active');
     var div = $('#' + sequenceId(sequence.name)).addClass('active');
 
-    // Make sure the selected sequence div is visible
-    var divLeft = div.offset().left;
-    var windowWidth = $(window).width();
-    if (divLeft < 0 || divLeft > windowWidth - 200) {
-      var currentScroll = $("#sequences").scrollLeft();
-      $("#sequences").animate({scrollLeft: currentScroll + divLeft - windowWidth/2});
-    }
-
     $('#graph').show();
     if (!setupRun) {
       setup();
@@ -447,8 +415,6 @@ var readgraph = new function() {
   // This shouldn't create or manipulate any SVG/DOM objects for things not being
   // displayed (eg. offscreen letters).
   var updateDisplay = function() {
-    var maxY = updateHeight();
-
     var scaleLevel = getScaleLevel();
     var summaryView = scaleLevel < 2;
     var coverageView = scaleLevel == 2 || scaleLevel == 3;
@@ -490,7 +456,6 @@ var readgraph = new function() {
       readView = true;
     }
 
-    toggleVisibility(unsupportedMessage, summaryView || coverageView);
     toggleVisibility(readOutlines, readView);
     toggleVisibility(variantOutlines, readView);
     toggleVisibility(readLetters, baseView);
@@ -503,8 +468,8 @@ var readgraph = new function() {
       variantOutlines
         .attr("x1", function(data) { return x(data.rx) + textWidth; })
         .attr("x2", function(data) { return x(data.rx) + textWidth; })
-        .attr("y1", function(data) { return y(maxY - data.ry); })
-        .attr("y2", function(data) { return y(maxY - data.ry) + textHeight; });
+        .attr("y1", function(data) { return y(totalTracks - data.ry); })
+        .attr("y2", function(data) { return y(totalTracks - data.ry) + textHeight; });
       readLetters.remove();
 
     } else if (baseView) {
@@ -553,7 +518,7 @@ var readgraph = new function() {
             return x(data.rx) + textWidth;
           })
           .attr("y", function(data, i) {
-            return y(maxY - data.ry) + textHeight/2;
+            return y(totalTracks - data.ry) + textHeight/2;
           });
     }
   };
