@@ -1,5 +1,5 @@
 {
-  "name": "core-meta",
+  "name": "paper-shadow",
   "private": true,
   "dependencies": {
     "polymer": "Polymer/polymer#>=0.3.0 <1.0.0"
