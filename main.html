@@ -28,6 +28,9 @@ limitations under the License.
   <script src="/static/js/jquery.bootpag.min.js" charset="utf-8"></script>
   <script src="/static/js/rbtree.js" charset="utf-8"></script>
 
+  <!-- HTML Imports for polymer -->
+  <link rel="import" href="/bower_components/paper-shadow/paper-shadow.html">
+
   <!-- Browser code -->
   <link rel="stylesheet" href="/static/css/main.css">
   <script src="/static/js/main.js" charset="utf-8"></script>
@@ -38,12 +41,14 @@ limitations under the License.
 <body>
   <div id=searchbox>
     Google
+    <paper-shadow z=1></paper-shadow>
   </div>
   <div id=content>
     <svg id=graph></svg>
   </div>
   </div>
   <div id=bottom>
+    <paper-shadow z=1></paper-shadow>
     <div id=sequence-title></div>
     <div id=posn>Position <span id=pos-start></span> .. <span id=pos-end></span></div>
   </div>

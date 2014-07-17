@@ -33,7 +33,6 @@ body {
   right: 10px;
   height: 50px;
   border-radius: 3px;
-  box-shadow: 0 3px 8px 3px #bbb;
   padding: 15px;
   font-size: 20px;
   color: grey;
@@ -47,7 +46,6 @@ body {
   right: 0;
   bottom: 0;
   padding: 15px;
-  box-shadow: 0 -3px 5px 1px #ccc;
 }
 
 #content {
