@@ -149,13 +149,13 @@ function setSearchTab(setType) {
 var activeSearch;
 
 function searchSetsOfType(setType, backend, datasetId) {
-  var tabPane = $('#searchPane' + setType);
-  var div = $('#setSearchResults').html('<img src="static/img/spinner.gif"/>');
-
   if (activeSearch) {
     abortingJqXHR = activeSearch;
     activeSearch.abort();
   }
+
+  var div = $('#setSearchResults').html('<img src="static/img/spinner.gif"/>');
+
   activeSearch = $.getJSON('/api/sets',
     {'backend': backend, 'datasetId': datasetId,
       'setType': setType, 'name': $('#setName').val()})
@@ -238,7 +238,6 @@ function switchToSet(backend, setType, id) {
   // TODO: Support multiple backends at once
   state.backend = backend;
   setAnchor(state);
-  $('#setSearch').hide();
 }
 
 function switchToLocation(location) {
@@ -252,8 +251,9 @@ function updateUserLocation(location) {
 
 function handleHash() {
   var state = getAnchorMap();
-  if (state.backend) {
-    $("#backend").val(state.backend);
+
+  if (state.backend && state.readsetId) {
+    $('#setSearch').hide();
 
     updateSets(state.backend, (state.readsetId || []).slice(0, 1),
       state.callsetId || [], state.location);
@@ -263,14 +263,11 @@ function handleHash() {
       var location = state.location.substring(colonIndex + 1);
       $("#readsetPosition").val(location);
     }
+  } else {
+    // Ensure the right datasets are listed and kick off a search.
+    $('#backend').change();
+    $('#setSearch').show();
   }
-}
-
-function showSetSearch() {
-  // Ensure the right datasets are listed and kick off a search.
-  $('#backend').change();
-
-  $('#setSearch').show();
 }
 
 var abortingJqXHR;
@@ -292,15 +289,36 @@ $(document).ready(function() {
   });
 
   $(window).on('hashchange', handleHash);
-  handleHash();
 
-  $('.datasetSelector').change(searchSets);
+  // Initialize search UI from local storage.
+  if (!localStorage.lastBackend) {
+    localStorage.lastBackend = 'GOOGLE';
+  }
+  if (!localStorage.lastDataset) {
+    localStorage.lastDataset = '{}';
+  }
+  $('#backend').val(localStorage.lastBackend);
+  $.each(JSON.parse(localStorage.lastDataset), function(backend, dataset) {
+    var selector = $('#datasetId' + backend);
+    if (selector) {
+      selector.val(dataset);
+    };
+  });
+
+  // Register handlers for search UI field changes.
+  $('.datasetSelector').change(function() {
+    var ld = JSON.parse(localStorage.lastDataset);
+    ld[$('#backend').val()] = $(this).val();
+    localStorage.lastDataset = JSON.stringify(ld);
+    searchSets();
+  });
   $('#setName').change(searchSets);
   $('#backend').change(function() {
+    localStorage.lastBackend = $(this).val();
     $('.datasetSelector').hide();
     $('#datasetId' + $(this).val()).show();
     searchSets();
   });
 
-  showSetSearch();
+  handleHash();
 });
