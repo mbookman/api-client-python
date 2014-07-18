@@ -83,6 +83,42 @@ body {
   left: 50%;
 }
 
+/* set search */
+
+#setSearch {
+  display: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: white;
+}
+
+#setSearchInput {
+  padding: 30px 30px 30px 100px;
+  background-color: #07f;
+  height: 200px;
+}
+
+#setSearchInput select {
+  display: inline-block;
+  width: 150px;
+}
+
+#setName {
+  margin-top: 10px;
+  height: 36px;
+  color: white;
+}
+
+#setSearchResults {
+  position: absolute;
+  top: 200px;
+  width: 100%;
+  bottom: 0;
+}
+
 /* graph styles */
 
 #graph {

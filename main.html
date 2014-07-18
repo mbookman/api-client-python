@@ -30,6 +30,7 @@ limitations under the License.
 
   <!-- HTML Imports for polymer -->
   <link rel="import" href="/bower_components/paper-shadow/paper-shadow.html">
+  <link rel="import" href="/bower_components/paper-input/paper-input.html">
 
   <!-- Browser code -->
   <link rel="stylesheet" href="/static/css/main.css">
@@ -39,6 +40,8 @@ limitations under the License.
 </head>
 
 <body>
+
+  <!-- Main view -->
   <div id=searchbox>
     Google
     <paper-shadow z=1></paper-shadow>
@@ -54,5 +57,30 @@ limitations under the License.
   </div>
   <div id=chr-btn>
   </div>
+  
+  <!-- Set search -->
+  <div id=setSearch>
+    <div id=setSearchInput>
+      <paper-shadow z=1></paper-shadow>
+      <select class="form-control" id="backend">
+        {% for backend, data in sorted(backends.iteritems()) %}
+          <option value="{{ backend }}">
+               {{ data.name }}
+          </option>
+        {% endfor %}
+      </select>
+      {% for backend, data in backends.iteritems() %}
+        <!-- TODO: Simplify this -->
+        <select class="form-control datasetSelector" id="datasetId{{ backend }}" supportsCallsets="{{ data.supportsCallsets }}">
+          {% for dataset, datasetId in sorted(data.datasets.iteritems()) %}
+            <option value="{{ datasetId }}"> {{ dataset }} </option>
+          {% endfor %}
+        </select>
+      {% endfor %}      
+      <paper-input label="Set name" id="setName"></paper-input>
+    </div>
+    <div id=setSearchResults>
+    </div>
+  </div>  
 </body>
 </html>

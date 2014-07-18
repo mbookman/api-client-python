@@ -320,6 +320,7 @@ class MainHandler(webapp2.RequestHandler):
     template = JINJA_ENVIRONMENT.get_template('main.html')
     self.response.write(template.render({
       'backends': SUPPORTED_BACKENDS,
+      'sorted': sorted
     }))
 
 web_app = webapp2.WSGIApplication(

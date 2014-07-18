@@ -10,6 +10,7 @@
     "tests"
   ],
   "dependencies": {
-    "paper-shadow": "Polymer/paper-shadow#~0.3.4"
+    "paper-shadow": "Polymer/paper-shadow#~0.3.4",
+    "paper-input": "Polymer/paper-input#~0.3.4"
   }
 }

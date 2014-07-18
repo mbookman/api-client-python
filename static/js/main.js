@@ -130,26 +130,13 @@ function updateListItems(backendName, setType, ids, loadedSetData) {
   });
 }
 
-function searchSets(button) {
-  if (button) {
-    button = $(button);
-    button.button('loading');
-  }
-
+function searchSets() {
   var backend = $('#backend').val();
   var datasetSelector = $('#datasetId' + backend);
   var datasetId = datasetSelector.val();
   var supportsCallsets = datasetSelector.attr("supportsCallsets");
 
-  searchSetsOfType(button, READSET_TYPE, backend, datasetId);
-
-  $("#CALLSETTab").toggleClass("disabled", !supportsCallsets);
-  if (supportsCallsets) {
-    searchSetsOfType(button, CALLSET_TYPE, backend, datasetId);
-  } else {
-    // Make sure the readset tab is selected
-    $("#READSETTab").click();
-  }
+  searchSetsOfType(READSET_TYPE, backend, datasetId);
 }
 
 function setSearchTab(setType) {
@@ -159,23 +146,24 @@ function setSearchTab(setType) {
   $('#searchPane' + setType).show();
 }
 
-function searchSetsOfType(button, setType, backend, datasetId) {
+var activeSearch;
+
+function searchSetsOfType(setType, backend, datasetId) {
   var tabPane = $('#searchPane' + setType);
-  var div = tabPane.find('.results')
-    .html('<img src="static/img/spinner.gif"/>');
+  var div = $('#setSearchResults').html('<img src="static/img/spinner.gif"/>');
 
-  function getItemsOnPage(page) {
-    return div.find('.list-group-item[page=' + page + ']');
+  if (activeSearch) {
+    abortingJqXHR = activeSearch;
+    activeSearch.abort();
   }
-
-  var setsPerPage = 10;
-  $.getJSON('/api/sets', {'backend': backend, 'datasetId': datasetId,
+  activeSearch = $.getJSON('/api/sets',
+    {'backend': backend, 'datasetId': datasetId,
       'setType': setType, 'name': $('#setName').val()})
-      .done(function(res) {
+      .done(function(res, textStatus, jqXHR) {
+        if (activeSearch != jqXHR) {
+          return;
+        }
         div.empty();
-
-        var pagination = tabPane.find('.paginationContainer');
-        pagination.hide();
 
         var sets = res.readsets || res.callsets;
         if (!sets) {
@@ -183,32 +171,19 @@ function searchSetsOfType(button, setType, backend, datasetId) {
           return;
         }
 
-        var totalPages = Math.ceil(sets.length / setsPerPage);
-
         $.each(sets, function(i, data) {
-          var page = Math.floor(i / setsPerPage) + 1;
-          $('<a/>', {'href': '#', 'class': 'list-group-item', 'page': page})
+          $('<a/>', {'href': '#', 'class': 'list-group-item'})
               .text(data.name).appendTo(div).click(function() {
             switchToSet(backend, setType, data.id);
             return false;
-          }).hide();
-        });
-        getItemsOnPage(1).show();
-
-        if (totalPages > 1) {
-          pagination.show();
-          pagination.bootpag({
-            page: 1,
-            total: totalPages,
-            maxVisible: 10
-          }).on("page", function(event, newPage) {
-            div.find('.list-group-item').hide();
-            getItemsOnPage(newPage).show();
           });
-        }
+        });
 
-      }).always(function() {
-        button && button.button('reset');
+      }).fail(function(jqXHR, textSatus, errorThrown) {
+        if (activeSearch == jqXHR) {
+          activeSearch = undefined;
+          div.empty();
+        }
       });
 }
 
@@ -263,7 +238,7 @@ function switchToSet(backend, setType, id) {
   // TODO: Support multiple backends at once
   state.backend = backend;
   setAnchor(state);
-  $('#setSearch').modal('hide');
+  $('#setSearch').hide();
 }
 
 function switchToLocation(location) {
@@ -291,6 +266,14 @@ function handleHash() {
   }
 }
 
+function showSetSearch() {
+  // Ensure the right datasets are listed and kick off a search.
+  $('#backend').change();
+
+  $('#setSearch').show();
+}
+
+var abortingJqXHR;
 
 // Show the about popup when the page loads the first time, read the hash,
 // and prep the initial set search
@@ -301,6 +284,9 @@ $(document).ready(function() {
   }
 
   $(document).ajaxError(function(e, xhr) {
+    if (xhr == abortingJqXHR) {
+      return;
+    }
     showError('Sorry, the api request failed for some reason. ' +
         '(' + xhr.responseText + ')');
   });
@@ -308,23 +294,13 @@ $(document).ready(function() {
   $(window).on('hashchange', handleHash);
   handleHash();
 
+  $('.datasetSelector').change(searchSets);
+  $('#setName').change(searchSets);
   $('#backend').change(function() {
     $('.datasetSelector').hide();
     $('#datasetId' + $(this).val()).show();
-  }).change();
-
-  // TODO: Simplify with general searchTab classes
-  $("#READSETTab").click(function() {
-    setSearchTab(READSET_TYPE);
-    return false;
-  });
-  $("#CALLSETTab").click(function() {
-    if ($(this).hasClass("disabled")) {
-      return false;
-    }
-    setSearchTab(CALLSET_TYPE);
-    return false;
+    searchSets();
   });
 
-  //searchSets();
+  showSetSearch();
 });
