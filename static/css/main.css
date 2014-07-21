@@ -65,7 +65,7 @@ body {
   color: grey;
 }
 
-#chr-btn {
+#dna-btn {
   position: absolute;
   background-color: #07f;
   right: 20px;
@@ -75,6 +75,13 @@ body {
   border-radius: 30px;
 }
 
+#dna-icon{
+  position:absolute;
+  right:35%;
+  top:10px;
+  width:30%;
+  height:auto;
+}
 
 .alert {
   z-index: 10000;
