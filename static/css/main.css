@@ -68,7 +68,7 @@ body {
 
 #dna-btn {
   position: absolute;
-  background-color: #07f;
+  background-color: #4285F4;
   right: 20px;
   width: 60px;
   height: 60px;
@@ -105,7 +105,7 @@ body {
 
 #setSearchInput {
   padding: 30px 30px 30px 100px;
-  background-color: #07f;
+  background-color: #4285F4;
   height: 200px;
 }
 
