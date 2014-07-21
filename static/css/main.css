@@ -84,6 +84,24 @@ body {
   height:auto;
 }
 
+#chr-btn {
+  position: absolute;
+  background-color: #fff;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  bottom: 140px;
+  border-radius: 30px;
+}
+
+#chr-icon{
+  position:absolute;
+  right:35%;
+  top:4px;
+  width:28%;
+  height:auto;
+}
+
 .alert {
   z-index: 10000;
   position: fixed;
@@ -118,7 +136,6 @@ body {
   margin-top: 10px;
   height: 36px;
   color: #7BAAF7;
-
 }
 
 #setSearchResults {
