@@ -104,7 +104,7 @@ var readgraph = new function() {
 
   var moveToSequencePosition = function(position) {
     position = Math.max(0, position);
-    position = Math.min(currentSequence['length'], position);
+    position = Math.min(currentSequence.length, position);
 
     var newX = x(position);
     newX = zoom.translate()[0] - newX + width / 2;
@@ -909,7 +909,9 @@ var readgraph = new function() {
     }
 
     var desiredStart = start - windowSize * MAX_CACHE_FACTOR;
+    desiredStart = Math.max(desiredStart, 1);
     var desiredEnd = end + windowSize * MAX_CACHE_FACTOR;
+    desiredEnd = Math.min(currentSequence.length, desiredEnd);
 
     if (overlaps(desiredStart, desiredEnd, readCache.start, readCache.end)
         && !addingBases) {
