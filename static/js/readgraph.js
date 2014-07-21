@@ -70,6 +70,10 @@ var readgraph = new function() {
     return totalTracks;
   };
 
+  var clamp = function(x, min, max) {
+    return Math.min(Math.max(x, min), max);
+  };
+
   var getScaleLevel = function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
   };
@@ -77,11 +81,15 @@ var readgraph = new function() {
   // Called at high frequency for any navigation of the UI (not just zooming).
   // Should only do low-latency operations.
   var handleZoom = function() {
-    var tx = zoom.translate()[0];
-    // TODO: This isn't strict enough
-    tx = Math.max(tx, (1 - zoom.scale()) * width);
-    tx = Math.min(tx, 0);
-    zoom.translate([tx, 0]);
+    // Limit the domain (without changing the scale).  D3 should really
+    // handle this for us, see https://github.com/mbostock/d3/issues/1084.
+    // Note that we don't want to reset the domain itself because that
+    // also resets the scale and translation.
+    if (x.domain()[0] < 1) {
+      zoom.translate([tx - x(1) + x.range()[0], 0]);
+    } else if (x.domain()[1] > currentSequence.length) {
+      zoom.translate([tx - x(currentSequence.length) + x.range()[1], 0]);
+    }
     svg.select(".axis").call(xAxis);
 
     // Update scale bar
@@ -103,8 +111,7 @@ var readgraph = new function() {
   };
 
   var moveToSequencePosition = function(position) {
-    position = Math.max(0, position);
-    position = Math.min(currentSequence.length, position);
+    position = clamp(position, 1, currentSequence.length);
 
     var newX = x(position);
     newX = zoom.translate()[0] - newX + width / 2;
@@ -153,8 +160,7 @@ var readgraph = new function() {
 
     svg.on("mousemove", function() {
       var mouseX = d3.mouse(this)[0];
-      mouseX = Math.max(margin, mouseX);
-      mouseX = Math.min(width - margin, mouseX);
+      mouseX = clamp(mouseX, margin, width - margin);
 
       if (mouseX > width * 2/3) {
         hovertext.attr('x', mouseX - 3).style('text-anchor', 'end');
@@ -207,8 +213,7 @@ var readgraph = new function() {
       } else {
         newZoom = zoom.scale() / zoomLevelChange;
       }
-      newZoom = Math.max(1, newZoom);
-      newZoom = Math.min(maxZoom, newZoom);
+      newZoom = clamp(newZoom, 1, maxZoom);
       zoom.scale(newZoom);
       moveToSequencePosition(middleX);
     };
@@ -321,7 +326,7 @@ var readgraph = new function() {
       selectSequence(sequence);
     }
 
-    var currentLength = currentSequence['length'];
+    var currentLength = currentSequence.length;
     if (position > currentLength) {
       showError('This sequence only has ' + xFormat(currentLength) +
           ' bases. Please try a smaller position.');
@@ -378,7 +383,7 @@ var readgraph = new function() {
     }
 
     // Axis and zoom
-    x.domain([0, sequence['length']]);
+    x.domain([1, sequence['length']]);
     maxZoom = Math.ceil(Math.max(1, sequence['length'] / minRange));
     zoomLevelChange = Math.pow(maxZoom, 1/6);
     zoom.x(x).scaleExtent([1, maxZoom]).size([width, height]);
@@ -909,9 +914,9 @@ var readgraph = new function() {
     }
 
     var desiredStart = start - windowSize * MAX_CACHE_FACTOR;
-    desiredStart = Math.max(desiredStart, 1);
+    desiredStart = clamp(desiredStart, 1, currentSequence.length);
     var desiredEnd = end + windowSize * MAX_CACHE_FACTOR;
-    desiredEnd = Math.min(currentSequence.length, desiredEnd);
+    desiredEnd = clamp(desiredEnd, 1, currentSequence.length);
 
     if (overlaps(desiredStart, desiredEnd, readCache.start, readCache.end)
         && !addingBases) {
