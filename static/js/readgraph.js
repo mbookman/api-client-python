@@ -86,9 +86,9 @@ var readgraph = new function() {
     // Note that we don't want to reset the domain itself because that
     // also resets the scale and translation.
     if (x.domain()[0] < 1) {
-      zoom.translate([tx - x(1) + x.range()[0], 0]);
+      zoom.translate([zoom.translate()[0] - x(1) + x.range()[0], 0]);
     } else if (x.domain()[1] > currentSequence.length) {
-      zoom.translate([tx - x(currentSequence.length) + x.range()[1], 0]);
+      zoom.translate([zoom.translate()[0] - x(currentSequence.length) + x.range()[1], 0]);
     }
     svg.select(".axis").call(xAxis);
 
