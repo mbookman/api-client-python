@@ -27,10 +27,12 @@ limitations under the License.
   <script src="/static/js/underscore-min.js" charset="utf-8"></script>
   <script src="/static/js/jquery.bootpag.min.js" charset="utf-8"></script>
   <script src="/static/js/rbtree.js" charset="utf-8"></script>
+  <link href='http://fonts.googleapis.com/css?family=Roboto:400,100,300,500,700,900' rel='stylesheet' type='text/css'>
 
   <!-- HTML Imports for polymer -->
   <link rel="import" href="/bower_components/paper-shadow/paper-shadow.html">
   <link rel="import" href="/bower_components/paper-input/paper-input.html">
+  <link rel="import" href="/bower_components/core-input/core-input.html">
 
   <!-- Browser code -->
   <link rel="stylesheet" href="/static/css/main.css">
@@ -43,7 +45,7 @@ limitations under the License.
 
   <!-- Main view -->
   <div id=searchbox>
-    Google
+    <core-input placeholder="Search"></core-input>
     <paper-shadow z=1></paper-shadow>
   </div>
   <div id=content>
@@ -56,6 +58,12 @@ limitations under the License.
     <div id=posn>Position <span id=pos-start></span> .. <span id=pos-end></span></div>
   </div>
   <div id=chr-btn>
+    <paper-shadow z="1"></paper-shadow>
+    <img id="chr-icon" src="/static/img/Chromosome.png">
+  </div>
+  <div id=dna-btn>
+    <paper-shadow z="1"></paper-shadow>
+    <img id="dna-icon" src="/static/img/dna.png">
   </div>
   
   <!-- Set search -->

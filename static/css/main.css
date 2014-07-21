@@ -19,6 +19,7 @@ limitations under the License.
 html, body {
   margin: 0;
   height: 100%;
+  font-family: "Roboto", sans-serif
 }
 
 body {
@@ -65,9 +66,9 @@ body {
   color: grey;
 }
 
-#chr-btn {
+#dna-btn {
   position: absolute;
-  background-color: #07f;
+  background-color: #4285F4;
   right: 20px;
   width: 60px;
   height: 60px;
@@ -75,6 +76,31 @@ body {
   border-radius: 30px;
 }
 
+#dna-icon{
+  position:absolute;
+  right:35%;
+  top:10px;
+  width:30%;
+  height:auto;
+}
+
+#chr-btn {
+  position: absolute;
+  background-color: #fff;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  bottom: 140px;
+  border-radius: 30px;
+}
+
+#chr-icon{
+  position:absolute;
+  right:35%;
+  top:4px;
+  width:28%;
+  height:auto;
+}
 
 .alert {
   z-index: 10000;
@@ -97,7 +123,7 @@ body {
 
 #setSearchInput {
   padding: 30px 30px 30px 100px;
-  background-color: #07f;
+  background-color: #4285F4;
   height: 200px;
 }
 
@@ -109,7 +135,7 @@ body {
 #setName {
   margin-top: 10px;
   height: 36px;
-  color: white;
+  color: #7BAAF7;
 }
 
 #setSearchResults {
