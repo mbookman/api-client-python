@@ -79,9 +79,15 @@ Troubleshooting
   means that one of the default App Engine ports is unavailable. The default ports are 8080 and 8000. 
   You can try different ports with these flags::
 
-  python dev_appserver.py --port 12080 --admin_port=12000 .
+    python dev_appserver.py --port 12080 --admin_port=12000 .
   
-Your server will then be available at ``localhost:12080``.
+  Your server will then be available at ``localhost:12080``.
+
+* Problem with a non-Chrome browser? Please 
+  `file an issue <https://github.com/googlegenomics/api-client-python/issues/new>`_.
+  jQuery and d3 get us a lot of browser portability for free - 
+  but testing on all configurations is tricky, so just let us know 
+  if there are issues!
 
 Code layout
 -----------
