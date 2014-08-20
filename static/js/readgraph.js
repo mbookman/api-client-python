@@ -986,7 +986,7 @@ var readgraph = new function() {
         .done(function(res, status, jqXHR) {
           var data;
           if (res.reads) {
-            var len = Number.parseInt(jqXHR.getResponseHeader('Content-Length'));
+            var len = parseInt(jqXHR.getResponseHeader('Content-Length'));
             totalReadBytes += len;
             console.log('readgraph ' + res.reads.length
               + (res.reads.length && 'originalBases' in res.reads[0] ? ' full' : ' partial')
