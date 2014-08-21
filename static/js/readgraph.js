@@ -42,7 +42,6 @@ var readgraph = new function() {
   var setObjects = [];
   var mergedSequences = [];
   var currentSequence = null;
-  var readStats = {}; // Map from position to stat information
 
   var readTrackLength = 0;
   var callsetTrackLength = 0;
@@ -76,6 +75,19 @@ var readgraph = new function() {
 
   var getScaleLevel = function() {
     return Math.floor(Math.log(zoom.scale()) / Math.log(zoomLevelChange) + .1);
+  };
+
+  var getReadStats = function(position) {
+    var reads = readCache.getReads().filter(function(read) {
+      return overlaps(read.position, read.end, position, position);
+    });
+    if (reads.length > 0 &&
+      _.every(reads, function(read) { return read.readPieces.length > 0 })) {
+      return _.countBy(_.map(reads, function(read) {
+        return read.readPieces[position - read.position].letter;
+      }));
+    }
+    return null;
   };
 
   // Called at high frequency for any navigation of the UI (not just zooming).
@@ -172,11 +184,11 @@ var readgraph = new function() {
       hovertext.selectAll('tspan').remove();
       hovertext.append('tspan').text(xFormat(position));
 
-      if (readStats[position]) {
-        var counts = _.countBy(readStats[position]);
+      var readStats = getReadStats(position);
+      if (readStats) {
         hovertext.append('tspan')
             .attr('y', textHeight*2).attr('x', hovertext.attr('x'))
-            .text(_.reduce(counts, function(memo, num, key) {
+            .text(_.reduce(readStats, function(memo, num, key) {
               return memo + num + key + " ";
             }, ""));
       }
@@ -546,9 +558,10 @@ var readgraph = new function() {
       // Read base stats
       var snp = positionIndicator.attr('snp');
       var loaded = positionIndicator.attr('loaded');
-      if (!loaded && snp && readStats[position]) {
+      var readStats = getReadStats(position);
+      if (!loaded && snp && readStats) {
         positionIndicator.attr('loaded', true);
-        var alleles = getAlleles(snp, readStats[position]);
+        var alleles = getAlleles(snp, readStats);
         $.getJSON('api/alleles', alleles).done(function(res) {
           if (res.summary) {
             var text = positionIndicator.selectAll('text').text(res.name + " ");
@@ -569,9 +582,7 @@ var readgraph = new function() {
     }
   };
 
-  var getAlleles = function(snp, stats) {
-    var counts = _.countBy(stats);
-
+  var getAlleles = function(snp, counts) {
     // First strip out low values
     var totalCount = _.reduce(counts, function(memo, key) {
       return memo + key;
@@ -785,8 +796,6 @@ var readgraph = new function() {
 
       var addLetter = function(type, letter, qual) {
         var basePosition = read.position + read.readPieces.length;
-        readStats[basePosition] = readStats[basePosition] || [];
-        readStats[basePosition].push(letter);
         read.readPieces.push({
           'letter' : letter,
           'rx': basePosition,
