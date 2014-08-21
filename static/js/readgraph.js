@@ -218,7 +218,7 @@ var readgraph = new function() {
       moveToSequencePosition(middleX);
     };
 
-    zoom = d3.behavior.zoom().size([width, height]).on("zoom", handleZoom).on("zoomend", handleZoomEnd);;
+    zoom = d3.behavior.zoom().size([width, height]).on("zoom", handleZoom).on("zoomend", handleZoomEnd);
     svg.call(zoom);
 
     // Zoom background
@@ -452,8 +452,6 @@ var readgraph = new function() {
   // This shouldn't create or manipulate any SVG/DOM objects for things not being
   // displayed (eg. offscreen letters).
   var updateDisplay = function() {
-    var maxY = updateHeight();
-
     var scaleLevel = getScaleLevel();
     var summaryView = scaleLevel < 2;
     var coverageView = scaleLevel == 2 || scaleLevel == 3;
@@ -466,6 +464,8 @@ var readgraph = new function() {
     var readsInView = readCache.getReads().filter(function(read) {
       return overlaps(read.position, read.end, sequenceStart, sequenceEnd);
     });
+    readTrackLength = _.max(_.pluck(readsInView, 'yOrder'));
+    var maxY = updateHeight();
     var reads = readGroup.selectAll(".read").data(readsInView,
       function(read) { return read.id; });
     reads.enter().append("g")
