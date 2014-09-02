@@ -64,7 +64,7 @@ if os.path.isfile(google_api_key_file):
              + api_key + '&%s',
       'supportsNameFilter': True,
       'supportsPartialResponse': True,
-      #'supportsCallsets': True,
+      'supportsCallsets': True,
       'datasets': {'1000 Genomes': '376902546192',
                    'DREAM SMC Challenge': '337315832689',
                    'PGP': '383928317087',
@@ -227,6 +227,7 @@ class VariantSearchHandler(BaseRequestHandler):
       'contig': self.request.get('sequenceName'),
       'startPosition': max(0, int(self.request.get('sequenceStart'))),
       'endPosition': int(self.request.get('sequenceEnd')),
+      'maxResults': 100
     }
     pageToken = self.request.get('pageToken')
     if pageToken:
