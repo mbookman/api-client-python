@@ -932,25 +932,29 @@ var readgraph = new function() {
       // Don't re-request the reads we already have.  This will still retransfer
       // reads which overlap the boundaries, but that should be small in practice.
       if (desiredStart < readCache.start) {
-        queryData(desiredStart, readCache.start, bases);
+        queryReadData(desiredStart, readCache.start, bases);
       }
       if (desiredEnd > readCache.end) {
-        queryData(readCache.end, desiredEnd, bases);
+        queryReadData(readCache.end, desiredEnd, bases);
       }
     } else {
-      queryData(desiredStart, desiredEnd, bases);
+      queryReadData(desiredStart, desiredEnd, bases);
     }
 
+    // TODO: Update variants to use the same caching mechanism as reads
+    queryVariantData(desiredStart, desiredEnd);
     readCache.setRange(desiredStart, desiredEnd, bases);
   };
 
-  var queryData = function(start, end, bases) {
+  var queryReadData = function(start, end, bases) {
     var readParams = makeQueryParams(start, end, READSET_TYPE, bases);
-    var variantParams = makeQueryParams(start, end, CALLSET_TYPE);
-
     if (readParams) {
       callXhr('/api/reads', readParams, updateReads);
     }
+  };
+
+  var queryVariantData = function(start, end) {
+    var variantParams = makeQueryParams(start, end, CALLSET_TYPE);
     if (variantParams) {
       callXhr('/api/variants', variantParams, setVariants);
     }
@@ -965,7 +969,7 @@ var readgraph = new function() {
     }
     pendingLoads++;
     var loadIndex = totalLoads++;
-    var timeLabel = 'readgraph load[' + loadIndex + ']'
+    var timeLabel = 'readgraph load[' + loadIndex + ']';
     if ('time' in console) {
       console.time(timeLabel);
     }
@@ -986,7 +990,7 @@ var readgraph = new function() {
         console.timeStamp(timeLabel + ' finish');
       }
     };
-  }
+  };
 
   var totalReadBytes = 0;
   var callXhr = function(url, queryParams, handler, opt_monitor, opt_data) {
