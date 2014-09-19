@@ -685,9 +685,15 @@ var readgraph = new function() {
     var variant = data.variant;
     var call = variant.calls[data.callIndex];
 
-    showObject(this, variantDiv, "Variant: " + variant.names.join(", "), [
-      ["Callset name", call.callsetName],
-      ["Position", variant.position]
+    var name = variant.names ? variant.names.join(" ") : "";
+
+    showObject(this, variantDiv, "Variant: " + name, [
+      ["Call set name", call.callSetName],
+      ["Genotype", getGenotype(variant, call)],
+      ["Reference name", variant.referenceName],
+      ["Reference bases", variant.referenceBases],
+      ["Start", variant.start],
+      ["End", variant.end]
     ]);
   };
 
@@ -699,12 +705,9 @@ var readgraph = new function() {
   // D3 object creation
 
   var getGenotype = function(variant, call) {
-
-    // TODO: Switch to genotype field when its ready
     var genotype = [];
-    var splits = call.info["GT"][0].split(/[|\/]/);
-    for (var g = 0; g < splits.length; g++) {
-      var allele = splits[g];
+    for (var g = 0; g < call.genotype.length; g++) {
+      var allele = call.genotype[g];
       if (allele == 0) {
         genotype.push(variant.referenceBases);
       } else {
@@ -724,8 +727,8 @@ var readgraph = new function() {
 
       $.each(variant.calls, function(callIndex, call) {
         data.push({
-          id: variant.id + call.callsetId,
-          rx: variant.position,
+          id: variant.id + call.callSetId,
+          rx: variant.start,
           ry: callIndex,
           genotype: getGenotype(variant, call).join(";"),
           variant: variant,

@@ -66,6 +66,7 @@ if os.path.isfile(google_api_key_file):
       'supportsPartialResponse': True,
       'supportsCallsets': True,
       'datasets': {'1000 Genomes': '376902546192',
+                   'Platinum Genomes': '3049512673186936334',
                    'DREAM SMC Challenge': '337315832689',
                    'PGP': '383928317087',
                    'Simons Foundation' : '461916304629'}
@@ -100,7 +101,8 @@ class BaseRequestHandler(webapp2.RequestHandler):
     return SUPPORTED_BACKENDS[self.get_backend()].has_key('supportsNameFilter')
 
   def supports_partial_response(self):
-    return SUPPORTED_BACKENDS[self.get_backend()].has_key('supportsPartialResponse')
+    return SUPPORTED_BACKENDS[self.get_backend()]\
+      .has_key('supportsPartialResponse')
 
   def get_base_api_url(self):
     return SUPPORTED_BACKENDS[self.get_backend()]['url']
@@ -129,7 +131,8 @@ class BaseRequestHandler(webapp2.RequestHandler):
       else:
         raise ApiException('Something went wrong with the API call!')
 
-    logging.info('get_content {}: {}kb {}s'.format(uri, contentLen/1024, time.clock() - startTime))
+    logging.info('get_content {}: {}kb {}s'
+                 .format(uri, contentLen/1024, time.clock() - startTime))
     return content
 
   def write_response(self, content):
@@ -144,22 +147,23 @@ class SetSearchHandler(BaseRequestHandler):
 
   def get(self):
     use_callsets = self.request.get('setType') == 'CALLSET'
-    set_type = 'callsets' if use_callsets  else 'readsets'
+    set_type = 'callSets' if use_callsets  else 'readsets'
+    container_name = 'variantSetIds' if use_callsets  else 'datasetIds'
     set_id = self.request.get('setId')
 
     if not set_id:
       dataset_id = self.request.get('datasetId')
       name = self.request.get('name')
       if dataset_id:
-        body = {'datasetIds' : [dataset_id]}
+        body = {container_name : [dataset_id]}
       else:
         # This is needed for the local readstore
-        body = {'datasetIds' : []}
+        body = {container_name : []}
 
       if self.supports_name_filter():
         body['name'] = name
 
-      response = self.get_content('%s/search' % set_type, body=body,
+      response = self.get_content('%s/search' % set_type.lower(), body=body,
                                   params='fields=%s(id,name)' % set_type)
 
       if not self.supports_name_filter() and name:
@@ -171,16 +175,18 @@ class SetSearchHandler(BaseRequestHandler):
 
     # Single object response
     if use_callsets:
-      callset = self.get_content('%s/%s' % (set_type, set_id), method="GET")
+      callset = self.get_content('%s/%s' % (set_type.lower(), set_id),
+                                 method="GET")
 
-      # For callsets, we also load up the variant summary data to get
-      # the available contigs and lengths
-      dataset_id = callset['datasetId']
-      summary = self.get_content('variants/summary', method="GET",
-                                 params='datasetId=%s' % dataset_id)
+      # For callsets, we also load up the variant set data to get
+      # the available reference names and lengths
+      variant_set_id = callset['variantSetIds'][0]
+      variant_set = self.get_content('variantsets/%s' % variant_set_id,
+                                 method="GET")
 
-      callset['contigs'] = [{'name': b['contig'], 'length': b['upperBound']}
-                            for b in summary['contigBounds']]
+      callset['references'] = [{'name': b['referenceName'],
+                                'length': b['upperBound']}
+                               for b in variant_set['referenceBounds']]
       self.response.write(json.dumps(callset))
       return
 
@@ -223,11 +229,11 @@ class VariantSearchHandler(BaseRequestHandler):
 
   def get(self):
     body = {
-      'callsetIds': self.request.get('setIds').split(','),
-      'contig': self.request.get('sequenceName'),
-      'startPosition': max(0, int(self.request.get('sequenceStart'))),
-      'endPosition': int(self.request.get('sequenceEnd')),
-      'maxResults': 100
+      'callSetIds': self.request.get('setIds').split(','),
+      'referenceName': self.request.get('sequenceName'),
+      'start': max(0, int(self.request.get('sequenceStart'))),
+      'end': int(self.request.get('sequenceEnd')),
+      'pageSize': 100
     }
     pageToken = self.request.get('pageToken')
     if pageToken:

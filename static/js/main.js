@@ -66,7 +66,7 @@ function loadSet(backend, readsetIds, callsetIds, opt_location, setType, id) {
 
   $.getJSON('/api/sets', {backend: backend, setType: setType, setId: id})
     .done(function(res) {
-      var sequenceData = res.contigs || res.fileData[0].refSequences;
+      var sequenceData = res.references || res.fileData[0].refSequences;
       loadedSetData[id] = {id: id, name: res.name, type: setType,
         backend: backend, sequences: sequenceData};
       updateSets(backend, readsetIds, callsetIds, opt_location);
@@ -177,7 +177,7 @@ function searchSetsOfType(button, setType, backend, datasetId) {
         var pagination = tabPane.find('.paginationContainer');
         pagination.hide();
 
-        var sets = res.readsets || res.callsets;
+        var sets = res.readsets || res.callSets;
         if (!sets) {
           div.html('No data found');
           return;
