@@ -46,10 +46,10 @@ SUPPORTED_BACKENDS = {
   'EBI' : {'name': 'EBI',
             'url': 'http://193.62.52.16/%s?%s',
             'datasets': {'All data': 'data'}},
-  'LOCAL' : {'name': 'Local',
-             'url': 'http://localhost:5000/%s?%s',
-             'supportsPartialResponse': True,
-             'datasets': {'All': ''}},
+  # 'LOCAL' : {'name': 'Local',
+  #            'url': 'http://localhost:5000/%s?%s',
+  #            'supportsPartialResponse': True,
+  #            'datasets': {'All': ''}},
 }
 
 # Google requires a valid API key.  If the file 'google_api_key.txt' exists
