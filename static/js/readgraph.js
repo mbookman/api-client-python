@@ -710,7 +710,7 @@ var readgraph = new function() {
       var allele = call.genotype[g];
       if (allele == 0) {
         genotype.push(variant.referenceBases);
-      } else {
+      } else if (allele > 0) {
         genotype.push(variant.alternateBases[allele - 1]);
       }
     }
@@ -771,6 +771,10 @@ var readgraph = new function() {
     var newReadIds = {};
 
     $.each(reads, function(readi, read) {
+      // TODO: v0.1 APIs are 1-based, and the v0.5 APIs are 0-based
+      // Remove the -1 when v0.5 is ready
+      read.position = read.position - 1;
+
       read.id = read.id || (read.name + read.position + read.cigar);
 
       if (newReadIds[read.id]) {
