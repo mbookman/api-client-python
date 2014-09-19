@@ -56,10 +56,21 @@ function closeButton() {
   return $('<button type="button" class="close" aria-hidden="true">&times;</button>');
 }
 
+function getBackendName(backend) {
+  return {GOOGLE : 'Google', LOCAL: 'Local'}[backend] || backend;
+}
+
 var loadedSetData = {};
-function loadSet(backend, readsetIds, callsetIds, opt_location, setType, id) {
+function loadSet(readsetBackend, readsetIds, callsetBackends, callsetIds,
+    opt_location, setType, id, backend) {
   if (_.has(loadedSetData, id)) {
     return false;
+  }
+
+  if (!backend) {
+    showError('Backend for ' + id + ' isn\'t specified. ' +
+      'The URL hash is malformed.');
+    return;
   }
 
   showMessage('Loading data');
@@ -69,15 +80,18 @@ function loadSet(backend, readsetIds, callsetIds, opt_location, setType, id) {
       var sequenceData = res.references || res.fileData[0].refSequences;
       loadedSetData[id] = {id: id, name: res.name, type: setType,
         backend: backend, sequences: sequenceData};
-      updateSets(backend, readsetIds, callsetIds, opt_location);
+      updateSets(readsetBackend, readsetIds, callsetBackends, callsetIds,
+        opt_location);
     });
   return true;
 }
 
-function updateSets(backend, readsetIds, callsetIds, opt_location) {
+function updateSets(readsetBackend, readsetIds, callsetBackends, callsetIds,
+    opt_location) {
   // Load missing readsets
   for (var i = 0; i < readsetIds.length; i++) {
-    if (loadSet(backend, readsetIds, callsetIds, opt_location, READSET_TYPE, readsetIds[i])) {
+    if (loadSet(readsetBackend, readsetIds, callsetBackends, callsetIds,
+        opt_location, READSET_TYPE, readsetIds[i], readsetBackend)) {
       // Wait for the set to callback
       return;
     }
@@ -85,18 +99,15 @@ function updateSets(backend, readsetIds, callsetIds, opt_location) {
 
   // Load missing callsets
   for (var j = 0; j < callsetIds.length; j++) {
-    if (loadSet(backend, readsetIds, callsetIds, opt_location, CALLSET_TYPE, callsetIds[j])) {
+    if (loadSet(readsetBackend, readsetIds, callsetBackends, callsetIds,
+        opt_location, CALLSET_TYPE, callsetIds[j], callsetBackends[j])) {
       // Wait for the set to callback
       return;
     }
   }
 
-  // TODO: Get this data from a better location
-  // TODO: Allow data from different backends to be loaded at the same time
-  var backendName = $('#backend option[value=' + backend + ']').text().trim();
-
-  updateListItems(backendName, READSET_TYPE, readsetIds, loadedSetData);
-  updateListItems(backendName, CALLSET_TYPE, callsetIds, loadedSetData);
+  updateListItems(READSET_TYPE, readsetIds, loadedSetData);
+  updateListItems(CALLSET_TYPE, callsetIds, loadedSetData);
 
   // Update readgraph with new sets
   var setData = _.filter(loadedSetData, function(data) {
@@ -110,12 +121,13 @@ function updateSets(backend, readsetIds, callsetIds, opt_location) {
   }
 }
 
-function updateListItems(backendName, setType, ids, loadedSetData) {
+function updateListItems(setType, ids, loadedSetData) {
   $('#' + setType + 'Title').toggle(ids.length > 0);
   var setList = $('#active' + setType).empty();
 
   $.each(ids, function(i, id) {
-    var name = loadedSetData[id].name;
+    var setData = loadedSetData[id];
+    var name = setData.name;
 
     var li = $('<li>', {'id': setType + '-' + id, 'class': 'list-group-item'})
       .appendTo(setList);
@@ -125,7 +137,7 @@ function updateListItems(backendName, setType, ids, loadedSetData) {
       return false;
     });
 
-    var displayName = backendName + ": " + name;
+    var displayName = getBackendName(setData.backend) + ": " + name;
     $('<div/>', {'class': 'setName'}).text(displayName).appendTo(li);
   });
 }
@@ -218,7 +230,7 @@ function setAnchor(map) {
   window.location.hash = $.param(map, true);
 }
 
-var arrayKeys = ['readsetId', 'callsetId'];
+var arrayKeys = ['backend', 'readsetId', 'cBackend', 'callsetId'];
 function getAnchorMap() {
   var hashParts = window.location.hash.substring(1).split('&');
   var map = {};
@@ -242,9 +254,15 @@ function getAnchorMap() {
 function removeSet(id, setType) {
   var state = getAnchorMap();
   var key = setType == READSET_TYPE ? 'readsetId' : 'callsetId';
-  state[key] = _.without(state[key], id);
+  var backendKey = setType == READSET_TYPE ? 'backend' : 'cBackend';
+  var setIndex = _.indexOf(state[key], id);
+  state[key].splice(setIndex, 1);
+  state[backendKey].splice(setIndex, 1);
   if (state[key].length == 0) {
     delete state[key];
+  }
+  if (state[backendKey].length == 0) {
+    delete state[backendKey];
   }
   setAnchor(state);
 }
@@ -254,14 +272,17 @@ function switchToSet(backend, setType, id) {
   var key = setType == READSET_TYPE ? 'readsetId' : 'callsetId';
 
   if (setType == READSET_TYPE) {
+    // TODO: Support multiple readsets at once
     state[key] = [id];
+    state.backend = [backend];
   } else {
     state[key] = (state[key] || []);
     state[key].push(id);
+
+    state.cBackend = (state.cBackend || []);
+    state.cBackend.push(backend);
   }
 
-  // TODO: Support multiple backends at once
-  state.backend = backend;
   setAnchor(state);
   $('#setSearch').modal('hide');
 }
@@ -277,17 +298,22 @@ function updateUserLocation(location) {
 
 function handleHash() {
   var state = getAnchorMap();
-  if (state.backend) {
-    $("#backend").val(state.backend);
+  var readsetBackend = (state.backend || [])[0];
+  if (readsetBackend) {
+    $("#backend").val(readsetBackend); // TODO: Get rid of this?
+  }
 
-    updateSets(state.backend, (state.readsetId || []).slice(0, 1),
-      state.callsetId || [], state.location);
-    if (state.location) {
-      // Strip off the chromosome prefix
-      var colonIndex = state.location.indexOf(":");
-      var location = state.location.substring(colonIndex + 1);
-      $("#readsetPosition").val(location);
-    }
+  updateSets(
+    readsetBackend,
+    (state.readsetId || []).slice(0, 1),
+    state.cBackend || [],
+    state.callsetId || [],
+    state.location);
+  if (state.location) {
+    // Strip off the chromosome prefix
+    var colonIndex = state.location.indexOf(":");
+    var location = state.location.substring(colonIndex + 1);
+    $("#readsetPosition").val(location);
   }
 }
 
