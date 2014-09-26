@@ -65,7 +65,7 @@ if os.path.isfile(google_api_key_file):
       'supportsNameFilter': True,
       'supportsPartialResponse': True,
       'supportsCallsets': True,
-      'datasets': {'1000 Genomes': '376902546192',
+      'datasets': {'1000 Genomes': '10473108253681171589',
                    'Platinum Genomes': '3049512673186936334',
                    'DREAM SMC Challenge': '337315832689',
                    'PGP': '383928317087',
