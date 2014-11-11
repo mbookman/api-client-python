@@ -77,7 +77,8 @@ function loadSet(readsetBackend, readsetIds, callsetBackends, callsetIds,
 
   $.getJSON('/api/sets', {backend: backend, setType: setType, setId: id})
     .done(function(res) {
-      var sequenceData = res.references || res.fileData[0].refSequences;
+      var sequenceData = _.sortBy(res.references,
+        function(ref) { return parseInt(ref.name); });
       loadedSetData[id] = {id: id, name: res.name, type: setType,
         backend: backend, sequences: sequenceData};
       updateSets(readsetBackend, readsetIds, callsetBackends, callsetIds,
@@ -151,17 +152,9 @@ function searchSets(button) {
   var backend = $('#backend').val();
   var datasetSelector = $('#datasetId' + backend);
   var datasetId = datasetSelector.val();
-  var supportsCallsets = datasetSelector.attr("supportsCallsets");
 
   searchSetsOfType(button, READSET_TYPE, backend, datasetId);
-
-  $("#CALLSETTab").toggleClass("disabled", !supportsCallsets);
-  if (supportsCallsets) {
-    searchSetsOfType(button, CALLSET_TYPE, backend, datasetId);
-  } else {
-    // Make sure the readset tab is selected
-    $("#READSETTab").click();
-  }
+  searchSetsOfType(button, CALLSET_TYPE, backend, datasetId);
 }
 
 function setSearchTab(setType) {
@@ -189,7 +182,7 @@ function searchSetsOfType(button, setType, backend, datasetId) {
         var pagination = tabPane.find('.paginationContainer');
         pagination.hide();
 
-        var sets = res.readsets || res.callSets;
+        var sets = res.readGroupSets || res.callSets;
         if (!sets) {
           div.html('No data found');
           return;

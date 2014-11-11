@@ -16,8 +16,6 @@ limitations under the License.
 "use strict";
 
 var readgraph = new function() {
-  var cigarMatcher = /([0-9]+[MIDNSHP=X])/gi
-
   var width = 0;
   var height = 800;
   var margin = 40;
@@ -675,9 +673,9 @@ var readgraph = new function() {
     showObject(this, readDiv, "Read: " + read.name, [
       ["Position", read.position],
       ["Length", read.length],
-      ["Mate position", read.matePosition],
-      ["Mapping quality", read.mappingQuality],
-      ["Cigar", read.cigar]
+      ["Mate position", read.nextMatePosition.position],
+      ["Mapping quality", read.alignment.mappingQuality],
+//      ["Cigar", read.alignment.cigar]
     ]);
   };
 
@@ -771,11 +769,9 @@ var readgraph = new function() {
     var newReadIds = {};
 
     $.each(reads, function(readi, read) {
-      // TODO: v0.1 APIs are 1-based, and the v0.5 APIs are 0-based
-      // Remove the -1 when v0.5 is ready
-      read.position = read.position - 1;
+      read.position = parseInt(read.alignment.position.position);
 
-      read.id = read.id || (read.name + read.position + read.cigar);
+      read.id = read.id || (read.fragmentName + read.position + read.readNumber);
 
       if (newReadIds[read.id]) {
         showError('There is more than one read with the ID ' + read.id +
@@ -791,10 +787,10 @@ var readgraph = new function() {
 
       // Interpret the cigar
       // TODO: Compare the read against a reference as well
-      read.name = read.name || read.id;
+      read.name = read.fragmentName || read.id;
       read.readPieces = [];
 
-      if (!read.cigar) {
+      if (!read.alignment.cigar) {
         // Hack for unmapped reads
         read.length = 0;
         read.end = read.position;
@@ -812,25 +808,24 @@ var readgraph = new function() {
       };
 
       var bases = null;
-      if (read.originalBases) {
-        bases = read.originalBases.split('');
+      if (read.alignedSequence) {
+        bases = read.alignedSequence.split('');
       }
       var baseIndex = 0;
-      var matches = read.cigar.match(cigarMatcher);
       read.length = 0;
 
-      for (var m = 0; m < matches.length; m++) {
-        var match = matches[m];
-        var baseCount = parseInt(match);
-        var baseType = match.match(/[^0-9]/)[0];
+      for (var m = 0; m < read.alignment.cigar.length; m++) {
+        var match = read.alignment.cigar[m];
+        var baseCount = parseInt(match.operationLength);
+        var baseType = match.operation;
 
         switch (baseType) {
-          case 'H':
-          case 'P':
+          case 'CLIP_HARD':
+          case 'PAD':
             // We don't display clipped sequences right now
             break;
-          case 'D':
-          case 'N':
+          case 'DELETE':
+          case 'SKIP':
             // Deletions get placeholders inserted
             for (var b = 0; b < baseCount; b++) {
               if (bases) {
@@ -839,18 +834,19 @@ var readgraph = new function() {
               read.length++;
             }
             break;
-          case 'S': // TODO: Reveal this skipped data somewhere
+          case 'CLIP_SOFT': // TODO: Reveal this skipped data somewhere
             baseIndex += baseCount;
             break;
-          case 'I': // TODO: What should an insertion look like?
-          case 'x': // TODO: Color these differently
-          case 'M':
-          case '=':
+          case 'INSERT': // TODO: What should an insertion look like?
+            // TODO: skip insertions?
+          case 'SEQUENCE_MISMATCH': // TODO: Color these differently
+          case 'ALIGNMENT_MATCH':
+          case 'SEQUENCE_MATCH':
             // Matches and insertions get displayed
             for (var j = 0; j < baseCount; j++) {
               if (bases) {
                 addLetter(baseType, bases[baseIndex],
-                  read.baseQuality.charCodeAt(baseIndex) - 33);
+                  read.alignedQuality[baseIndex]);
               }
               baseIndex++;
               read.length++;
@@ -861,13 +857,12 @@ var readgraph = new function() {
 
       // Remove data that's now redundant with readPieces.
       if (bases) {
-        delete read.originalBases;
-        delete read.baseQuality;
+        delete read.alignedSequence;
+        delete read.alignedQuality;
       }
 
       read.end = read.position + read.length;
-      // The 5th flag bit indicates this read is reversed
-      read.reverse = (read.flags >> 4) % 2 == 1;
+      read.reverse = read.alignment.position.reverseStrand;
 
       // Create or update the entry in the cache, assuming we still want it.
       // Note that we can't easily test to see if we still want the read before
@@ -902,10 +897,10 @@ var readgraph = new function() {
     queryParams.sequenceEnd = parseInt(sequenceEnd);
 
     if (type == READSET_TYPE) {
-      var baseFields = opt_bases ? ',originalBases,baseQuality' : '';
+      var baseFields = opt_bases ? ',alignedSequence,alignedQuality' : '';
       // TODO: Google Read ID is rather long (increases transfer volume by ~50%
       // in read view).  Should we synthesize our own instead?
-      queryParams.readFields = 'id,name,position,matePosition,mappingQuality,cigar' + baseFields;
+      queryParams.readFields = 'id,fragmentName,alignment,nextMatePosition' + baseFields;
     }
 
     return queryParams;
@@ -1005,15 +1000,15 @@ var readgraph = new function() {
     $.getJSON(url, queryParams)
         .done(function(res, status, jqXHR) {
           var data;
-          if (res.reads) {
+          if (res.alignments) {
             var len = parseInt(jqXHR.getResponseHeader('Content-Length'));
             totalReadBytes += len;
-            console.log('readgraph ' + res.reads.length
-              + (res.reads.length && 'originalBases' in res.reads[0] ? ' full' : ' partial')
+            console.log('readgraph ' + res.alignments.length
+              + (res.alignments.length && 'alignedSequence' in res.alignments[0] ? ' full' : ' partial')
               + ' reads (' + Math.round(len/1024) + 'kb), total ' + Math.round(totalReadBytes/1024) + 'kb');
             // Reads are handled incrementally, but variants aren't yet.
             // Eventually variants will be updated to follow the same pattern.
-            handler(res.reads);
+            handler(res.alignments);
           } else {
             data = (opt_data || []).concat(res.variants || []);
             handler(data);

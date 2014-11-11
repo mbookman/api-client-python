@@ -26,12 +26,12 @@ function overlaps(start1, end1, start2, end2) {
  * A data structure for keeping track of all the reads we have loaded.
  * The objects in the cache have already been processed, and so must have
  * their computed fields like end and readPieces (rather than the raw fields
- * like originalBases).
+ * like alignedSequence).
  */
 var readCache = new function() {
   /*
    * Whether we're caching base data.  All reads stored into the cache
-   * should have the 'originalBases' property if and only if this is true.
+   * should have the 'alignedSequence' property if and only if this is true.
    * When this changes from true to false, all cached base data is cleared.
    * But when this changes from false to true, reads without base data are
    * preserved until they can be updated to include the base data.
@@ -159,7 +159,7 @@ var readCache = new function() {
     // The read should have already been processed.
     assert('end' in read);
     assert('readPieces' in read);
-    assert(!('originalBases' in read));
+    assert(!('alignedSequence' in read));
 
     // If we don't actually want this read anymore, do nothing.
     if (!overlaps(read.position, read.end, start, end)

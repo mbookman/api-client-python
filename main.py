@@ -38,18 +38,11 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 
 
 # TODO: Dataset information should come from the list datasets api call
+# But that call is not in the GA4GH API yet
 SUPPORTED_BACKENDS = {
-  'NCBI' : {'name': 'NCBI',
-            'url': 'http://trace.ncbi.nlm.nih.gov/Traces/gg/%s?%s',
-            'supportsPartialResponse': True,
-            'datasets': {'SRP034507': 'SRP034507', 'SRP029392': 'SRP029392'}},
-  'EBI' : {'name': 'EBI',
-            'url': 'http://193.62.52.16/%s?%s',
-            'datasets': {'All data': 'data'}},
-  # 'LOCAL' : {'name': 'Local',
-  #            'url': 'http://localhost:5000/%s?%s',
-  #            'supportsPartialResponse': True,
-  #            'datasets': {'All': ''}},
+  'Ensembl' : {'name': 'Ensembl',
+            'url': 'http://193.62.52.232:8081/%s?%s',
+            'datasets': {'1000 genomes pilot 2': '2'}}
 }
 
 # Google requires a valid API key.  If the file 'google_api_key.txt' exists
@@ -60,11 +53,9 @@ if os.path.isfile(google_api_key_file):
     api_key = file.readline().strip()
     SUPPORTED_BACKENDS['GOOGLE'] = {
       'name': 'Google',
-      'url': 'https://www.googleapis.com/genomics/v1beta/%s?key='
+      'url': 'https://www.googleapis.com/genomics/v1beta2/%s?key='
              + api_key + '&%s',
-      'supportsNameFilter': True,
       'supportsPartialResponse': True,
-      'supportsCallsets': True,
       'datasets': {'1000 Genomes': '10473108253681171589',
                    'Platinum Genomes': '3049512673186936334',
                    'DREAM SMC Challenge': '337315832689',
@@ -145,68 +136,83 @@ class BaseRequestHandler(webapp2.RequestHandler):
 
 class SetSearchHandler(BaseRequestHandler):
 
+  def write_read_group_sets(self, dataset_id, name):
+    self.write_content('readgroupsets/search',
+                       body={'datasetIds': [dataset_id], 'name': name},
+                       params='fields=readGroupSets(id,name)')
+
+  def write_call_sets(self, dataset_id, name):
+    variant_sets = self.get_content('variantsets/search',
+                                    body={ 'datasetIds' : [dataset_id]})
+    variant_set_id = variant_sets['variantSets'][0]['id']
+    self.write_content('callsets/search',
+                       body={'variantSetIds': [variant_set_id], 'name': name},
+                       params='fields=callSets(id,name)')
+
+  def write_read_group_set(self, set_id):
+    set = self.get_content('readgroupsets/%s' % set_id, method='GET')
+    # For read group sets, we also load up the reference set data
+    # TODO: Get coverage API added to GA4GH
+    reference_set_id = set.get('referenceSetId') or \
+                       set['readGroups'][0].get('referenceSetId')
+
+    # TODO: Get search by refSetId added to GA4GH
+    references = self.get_content('references/search',
+                                   body={'referenceSetId': [reference_set_id]},
+                                   params='fields=references(name,length)')
+    set['references'] = references['references']
+    self.response.write(json.dumps(set))
+
+
+  def write_call_set(self, set_id):
+    set = self.get_content('callsets/%s' % set_id, method='GET')
+    # For call sets, we also load up the variant set data to get
+    # the available reference names and lengths
+    variant_set_id = set['variantSetIds'][0]
+    variant_set = self.get_content('variantsets/%s' % variant_set_id,
+                               method="GET")
+
+    # TODO: Get variantset.refSetId added to GA4GH
+    set['references'] = [{'name': b['referenceName'],
+                          'length': b['upperBound']}
+                         for b in variant_set['referenceBounds']]
+    self.response.write(json.dumps(set))
+
   def get(self):
     use_callsets = self.request.get('setType') == 'CALLSET'
-    set_type = 'callSets' if use_callsets  else 'readsets'
-    container_name = 'variantSetIds' if use_callsets  else 'datasetIds'
     set_id = self.request.get('setId')
-
-    if not set_id:
+    if set_id:
+      if use_callsets:
+        self.write_call_set(set_id)
+      else:
+        self.write_read_group_set(set_id)
+    else:
       dataset_id = self.request.get('datasetId')
       name = self.request.get('name')
-      if dataset_id:
-        body = {container_name : [dataset_id]}
-      else:
-        # This is needed for the local readstore
-        body = {container_name : []}
 
-      if self.supports_name_filter():
-        body['name'] = name
-
-      response = self.get_content('%s/search' % set_type.lower(), body=body,
-                                  params='fields=%s(id,name)' % set_type)
-
-      if not self.supports_name_filter() and name:
-        name = name.lower()
-        response[set_type] = [r for r in response[set_type]
-                                if name in r['name'].lower()]
-      self.response.write(json.dumps(response))
-      return
-
-    # Single object response
-    if use_callsets:
-      callset = self.get_content('%s/%s' % (set_type.lower(), set_id),
-                                 method="GET")
-
-      # For callsets, we also load up the variant set data to get
-      # the available reference names and lengths
-      variant_set_id = callset['variantSetIds'][0]
-      variant_set = self.get_content('variantsets/%s' % variant_set_id,
-                                 method="GET")
-
-      callset['references'] = [{'name': b['referenceName'],
-                                'length': b['upperBound']}
-                               for b in variant_set['referenceBounds']]
-      self.response.write(json.dumps(callset))
-      return
-
-    self.write_content('%s/%s' % (set_type, set_id), method='GET')
+      try:
+        if use_callsets:
+          self.write_call_sets(dataset_id, name)
+        else:
+          self.write_read_group_sets(dataset_id, name)
+      except:
+        self.response.write('{}')
 
 
 class ReadSearchHandler(BaseRequestHandler):
 
   def get(self):
     body = {
-      'readsetIds': self.request.get('setIds').split(','),
-      'sequenceName': self.request.get('sequenceName'),
-      'sequenceStart': max(0, int(self.request.get('sequenceStart'))),
-      'sequenceEnd': int(self.request.get('sequenceEnd')),
+      'readGroupSetIds': self.request.get('setIds').split(','),
+      'referenceName': self.request.get('sequenceName'),
+      'start': max(0, int(self.request.get('sequenceStart'))),
+      'end': int(self.request.get('sequenceEnd')),
     }
     readFields = self.request.get('readFields')
     params = ''
     if readFields and self.supports_partial_response():
-        params = 'fields=nextPageToken,reads(%s)' % readFields
-        body['maxResults'] = 1024
+        params = 'fields=nextPageToken,alignments(%s)' % readFields
+        body['pageSize'] = 1024
     pageToken = self.request.get('pageToken')
     if pageToken:
       body['pageToken'] = pageToken
@@ -219,8 +225,8 @@ class ReadSearchHandler(BaseRequestHandler):
       fields = readFields.split(',')
       def filterKeys(dict, keys):
         return { key: dict[key] for key in keys }
-      newReads = [ filterKeys(read, fields) for read in content['reads']]
-      content['reads'] = newReads
+      newReads = [ filterKeys(read, fields) for read in content['alignments']]
+      content['alignments'] = newReads
       
     self.write_response(content)
 

@@ -53,13 +53,13 @@ limitations under the License.
       </div>
       <div class="modal-body">
         <p class="lead">GABrowse is a sample application designed to demonstrate the capabilities of the
-        <a href="http://ga4gh.github.io/apis/reads/v0.1/">GA4GH API v0.1</a>.</p>
+        <a href="http://ga4gh.org/#/api">GA4GH API v0.5.1</a>.</p>
 
-        <p>Currently, you can view data from Google, NCBI and EBI.</p>
+        <p>Currently, you can view data from Google and Ensembl.</p>
 
         <p>
           <ul>
-            <li>Use the button on the left to select a Readset or Call set.</li>
+            <li>Use the button on the left to select a Read group set or Call set.</li>
             <li>Once loaded, choose a chromosome and zoom or drag the main graph to
               explore <a href="http://en.wikipedia.org/wiki/DNA_sequence">Read data.</a></li>
             <li>Individual <a href="http://en.wikipedia.org/wiki/Nucleobase">bases</a>
@@ -113,8 +113,8 @@ limitations under the License.
         </form>
         <div>
           <ul class="nav nav-tabs">
-            <li class="active" id="READSETTab"><a>Readsets</a></li>
-            <li class="disabled" id="CALLSETTab"><a>Call sets</a></li>
+            <li class="active" id="READSETTab"><a>Read group sets</a></li>
+            <li id="CALLSETTab"><a>Call sets</a></li>
           </ul>
           <div class="tab-content">
             <div class="tab-pane active" id="searchPaneREADSET">
@@ -149,7 +149,7 @@ limitations under the License.
     <h5 id="CALLSETTitle" style="display:none">Call sets</h5>
     <ul class="list-group" id="activeCALLSET" style="margin-top: 20px"></ul>
 
-    <h5 id="READSETTitle" style="display:none">Readsets</h5>
+    <h5 id="READSETTitle" style="display:none">Read group sets</h5>
     <ul class="list-group" id="activeREADSET" style="margin-top: 20px"></ul>
 
 
@@ -170,7 +170,7 @@ limitations under the License.
 
   <div class="col-md-10">
     <div id="chooseSetMessage">
-      <h3><small>Add a readset or call set to get started.</small></h3>
+      <h3><small>Add a read group set or call set to get started.</small></h3>
     </div>
     <div id="sequences"></div>
     <svg id="graph"></svg>
