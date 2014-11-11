@@ -673,10 +673,16 @@ var readgraph = new function() {
     showObject(this, readDiv, "Read: " + read.name, [
       ["Position", read.position],
       ["Length", read.length],
-      ["Mate position", read.nextMatePosition.position],
+      ["Mate position", read.nextMatePosition ? read.nextMatePosition.position : ''],
       ["Mapping quality", read.alignment.mappingQuality],
-//      ["Cigar", read.alignment.cigar]
+      ["Cigar", getCigarString(read.alignment.cigar)]
     ]);
+  };
+
+  var getCigarString = function(cigar) {
+    return _.reduce(cigar, function(str, c) {
+      return str + " " + c.operationLength + " " + c.operation;
+    }, "");
   };
 
   var showVariant = function(data) {
@@ -837,11 +843,14 @@ var readgraph = new function() {
           case 'CLIP_SOFT': // TODO: Reveal this skipped data somewhere
             baseIndex += baseCount;
             break;
-          case 'INSERT': // TODO: What should an insertion look like?
-            // TODO: skip insertions?
+          case 'INSERT':
+            // Insertions are skipped
+            // TODO: Indicate the missing bases in the UI
+            baseIndex += baseCount;
+            break;
           case 'SEQUENCE_MISMATCH': // TODO: Color these differently
-          case 'ALIGNMENT_MATCH':
           case 'SEQUENCE_MATCH':
+          case 'ALIGNMENT_MATCH':
             // Matches and insertions get displayed
             for (var j = 0; j < baseCount; j++) {
               if (bases) {
