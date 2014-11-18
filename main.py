@@ -152,15 +152,22 @@ class SetSearchHandler(BaseRequestHandler):
   def write_read_group_set(self, set_id):
     set = self.get_content('readgroupsets/%s' % set_id, method='GET')
     # For read group sets, we also load up the reference set data
-    # TODO: Get coverage API added to GA4GH
     reference_set_id = set.get('referenceSetId') or \
                        set['readGroups'][0].get('referenceSetId')
 
-    # TODO: Get search by refSetId added to GA4GH
-    references = self.get_content('references/search',
-                                   body={'referenceSetId': [reference_set_id]},
-                                   params='fields=references(name,length)')
-    set['references'] = references['references']
+    if not reference_set_id:
+      # TODO: Get coverage API added to GA4GH
+      buckets = self.get_content('readgroupsets/%s/coveragebuckets' % set_id,
+                                 method='GET')
+      set['references'] = [{'name': b['range']['referenceName'],
+                            'length': b['range']['end']}
+                           for b in buckets['coverageBuckets']]
+    else:
+      # TODO: Get search by refSetId added to GA4GH
+      references = self.get_content('references/search',
+                                    body={'referenceSetId': [reference_set_id]},
+                                    params='fields=references(name,length)')
+      set['references'] = references['references']
     self.response.write(json.dumps(set))
 
 
