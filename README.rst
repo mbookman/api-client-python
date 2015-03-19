@@ -11,7 +11,7 @@ interface, and displays a pileup of reads with support for zooming and basic nav
 You can try out the sample genome browser, called GABrowse, now by going to https://gabrowse.appspot.com.
 
 It can be run with app engine or without.
-See `the docs <http://google-genomics.readthedocs.org/en/latest/api-client-python>`_
+See `the docs <http://googlegenomics.readthedocs.org/en/latest/api-client-python>`_
 for more information.
 
 .. _Google Genomics Api: https://developers.google.com/genomics
