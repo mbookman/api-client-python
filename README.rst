@@ -14,13 +14,13 @@ It can be run with app engine or without.
 See `the docs <http://googlegenomics.readthedocs.org/en/latest/api-client-python>`_
 for more information.
 
-.. _Google Genomics Api: https://developers.google.com/genomics
+.. _Google Genomics Api: https://cloud.google.com/genomics
 
 Running on App Engine
 ~~~~~~~~~~~~~~~~~~~~~
 
 To run with app engine, you'll need to download and install `Google App Engine SDK for Python
-<https://developers.google.com/appengine/downloads>`_.
+<https://cloud.google.com/appengine/downloads>`_.
 
 On Mac OS X you can setup and run the application through the GoogleAppEngineLauncher UI. 
 To use the command line or to run on Linux::
