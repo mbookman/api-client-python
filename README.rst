@@ -1,8 +1,12 @@
 api-client-python
 =================
 
-Getting started
----------------
+.. _Google Genomics Api: https://cloud.google.com/genomics
+
+.. contents::
+
+Introduction
+------------
 
 This Python client demonstrates a simple web-based genome browser that fetches data from the 
 `Google Genomics API`_, the NCBI Genomics API or the Local Readstore through a web
@@ -10,67 +14,159 @@ interface, and displays a pileup of reads with support for zooming and basic nav
 
 You can try out the sample genome browser, called GABrowse, now by going to https://gabrowse.appspot.com.
 
-It can be run with app engine or without.
-See `the docs <http://googlegenomics.readthedocs.org/en/latest/api-client-python>`_
-for more information.
+The code in this repository can be run with
+with `Google App Engine <https://cloud.google.com/appengine/>`_
+or locally on your own laptop or workstation under a
+`development server <https://cloud.google.com/appengine/docs/python/tools/using-local-server>`_ before deploying to the internet.
 
-.. _Google Genomics Api: https://cloud.google.com/genomics
+It can also be run locally without App Engine
+using the Python `paste <https://en.wikipedia.org/wiki/Python_Paste>`_
+web application framework.
+
+
+Set up a Google Cloud project
+-----------------------------
+
+If you will run this application under App Engine (local or remote)
+or you will access data in Google Genomics, you must set up a Google
+Cloud Platform project.
+
+#. Follow instructions `here <https://support.google.com/cloud/answer/6251787>`_ to create a new project
+
+#. Follow instructions `here <https://support.google.com/cloud/answer/6158841>`_ to enable the ``Genomics`` API 
+
+#. Follow instructions `here <https://support.google.com/cloud/answer/6158840>`_ to find your Cloud "project ID"
+
+You will need your project ID if you deploy to App Engine.
+
+#. Follow instructions `here <https://cloud.google.com/sdk/docs/quickstarts>`_ to install and authorize to the Cloud SDK
+
+The web application uses `Application Default Credentials <https://developers.google.com/identity/protocols/application-default-credentials>`_ to authorize
+requests to the Google Genomics API.
+
+When running the web application locally, it will use your Cloud SDK
+credentials.
 
 Running on App Engine
 ~~~~~~~~~~~~~~~~~~~~~
 
-To run with app engine, you'll need to download and install `Google App Engine SDK for Python
-<https://cloud.google.com/appengine/downloads>`_.
+`Google App Engine <https://cloud.google.com/appengine/docs/python/>`_
+provides an application framework for internet-based web applications.
 
-On Mac OS X you can setup and run the application through the GoogleAppEngineLauncher UI. 
+Running on the App Engine Development Server
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To run the application on the development server, you will:
+
+1. Download the App Engine SDK
+2. Install Google's OAuth client libraries
+3. Launch the development server
+4. Open the application URL in your browser
+
+1. Download the App Engine SDK
+''''''''''''''''''''''''''''''
+
+Read about and follow the instructions for downloading and installing the 
+`Google App Engine SDK for Python <https://cloud.google.com/appengine/downloads#Google_App_Engine_SDK_for_Python>`_
+
+2. Install Google's OAuth client libraries
+''''''''''''''''''''''''''''''''''''''''''
+
+The App Engine environment allows for pure python libraries to be used
+at runtime. Documentation can be found
+`here <https://cloud.google.com/appengine/docs/python/tools/using-libraries-python-27#adding_libraries>`_.
+
+For this application execute the following in the root of your local copy:
+
+  mkdir lib
+  pip install -t lib --upgrade oauth2client
+
+This will install the `oauth2client <https://oauth2client.readthedocs.io/en/latest/>`_ and all of its dependencies
+(including `httplib2 <http://bitworking.org/projects/httplib2/doc/html/>`_).
+
+3. Launch the development server
+''''''''''''''''''''''''''''''''
+
+On Mac OS X you can set up and run the application through the
+GoogleAppEngineLauncher UI. 
 To use the command line or to run on Linux::
 
-  cd api-client-python
   dev_appserver.py .
   
 To run on Windows::
 
-  cd api-client-python
   python c:\path\to\dev_appserver.py .
 
-Once running, visit ``http://localhost:8080`` in your browser to browse data from the API.
+4. Open the application URL in your browser
+'''''''''''''''''''''''''''''''''''''''''''
 
+Once running, visit ``http://localhost:8080`` in your browser to browse
+data from the API.
+
+Running on the App Engine Production Server
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To deploy this application to App Engine, execute the following command:
+
+  appcfg.py -A YOUR_PROJECT_ID -V v1 update .
+
+Replace ``YOUR_PROJECT_ID`` with the project of your Google Cloud Project.
+
+Once running, visit ``http://YOUR_PROJECT_ID.appspot.com`` in your browser
+to browse data from the API.
 
 Running with paste and webapp2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you don't want to use App Engine, you can instead run the local server with paste.
-First you'll need to `install pip <http://www.pip-installer.org/en/latest/installing.html>`_.
+If you don't want to use App Engine, you can instead run the local server
+with the Python `paste <https://en.wikipedia.org/wiki/Python_Paste>`_
+web server framework.
 
-Then install the required dependencies and run the ``localserver.py`` file::
+It is highly recommended that you install Python libraries in a
+`virtualenv <http://docs.python-guide.org/en/latest/dev/virtualenvs/>`_.
+This allows you to contain your installation and dependent libraries
+in one place.
+
+The instructions here explicitly use a Python virtualenv and have only
+been tested in this environment.
+
+Install pip
+^^^^^^^^^^^
+If you do not already have `pip <https://en.wikipedia.org/wiki/Pip_(package_manager)>`_
+installed, you can find instructions 
+`here <http://www.pip-installer.org/en/latest/installing.html>`_.
+
+Install virtualenv
+^^^^^^^^^^^^^^^^^^
+If you have not installed ``virtualenv``, then do so with:
+
+  [sudo] pip install virtualenv
+
+Create a virtualenv
+^^^^^^^^^^^^^^^^^^^
+
+Create a virtualenv called localserver_libs:
+
+  virtualenv localserver_libs
+
+Activate the virtualenv
+^^^^^^^^^^^^^^^^^^^^^^^
+
+  source localserver_libs/bin/activate
+
+Install localserver.py dependent libraries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Install the required dependencies:
 
   pip install WebOb Paste webapp2 jinja2
+  pip install urllib3[secure] httplib2shim
+  pip install --upgrade oauth2client
+
+Run the localserver.py file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
   python localserver.py
-
-Enabling the Google API
-~~~~~~~~~~~~~~~~~~~~~~~
-
-If you want to pull in data from `Google Genomics API`_ you will need to store a valid
-Google API key into a file named ``google_api_key.txt``.
-
-* First create a `Genomics enabled project <https://console.developers.google.com/flows/enableapi?apiid=genomics>`_ 
-  in the Google Developers Console.
-
-* Once you are redirected to the **Credentials** tab, click **create new key** under
-  the Public API access section.
-
-* Select **Server key** in the dialog that pops up, and then click **Create**.
-  (You don't need to enter anything in the text box)
-
-* Copy the **API key** field value that now appears in the Public API access
-  section into a new file named ``google_api_key.txt`` in the same directory as ``main.py``.
-  The file should consist of a single undecorated line like this::
-
-    abcdef12345abcdef
-
-Note: You can also reuse an existing API key if you have one.
-Just make sure the Genomics API is turned on.
-
 
 Troubleshooting
 ~~~~~~~~~~~~~~~
@@ -110,9 +206,6 @@ static/js/readgraph.js:
   `d3.js <http://d3js.org>`_ to display actual Read data.
 
 The python client also depends on several external libraries:
-
-`httplib2`_:
-  used to fetch data from API providers
 
 `D3`_:
   is a javascript library used to make rich visualizations
