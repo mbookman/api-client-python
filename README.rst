@@ -90,13 +90,13 @@ This will install the `oauth2client <https://oauth2client.readthedocs.io/en/late
 
 On Mac OS X you can set up and run the application through the
 GoogleAppEngineLauncher UI. 
-To use the command line or to run on Linux::
+To use the command line or to run on Linux:
 
 .. code:: shell
 
   dev_appserver.py .
   
-To run on Windows::
+To run on Windows:
 
 .. code:: shell
 
@@ -123,10 +123,10 @@ Once running, visit http://YOUR_PROJECT_ID.appspot.com in your browser
 to browse data from the API.
 
 Running with paste and webapp2
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
-If you don't want to use App Engine, you can instead run the local server
-with the Python `paste <https://en.wikipedia.org/wiki/Python_Paste>`_
+You can also run the server locally using 
+the Python `paste <https://en.wikipedia.org/wiki/Python_Paste>`_
 web server framework.
 
 It is highly recommended that you install Python libraries in a
@@ -154,7 +154,7 @@ If you have not installed ``virtualenv``, then do so with:
 3. Create a virtualenv
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Create a virtualenv called localserver_libs:
+Create a virtualenv called ``localserver_libs``:
 
 .. code:: shell
 
@@ -192,27 +192,27 @@ Troubleshooting
   means that one of the default App Engine ports is unavailable. The default ports are 8080 and 8000. 
   You can try different ports with these flags::
 
-    python dev_appserver.py --port 12080 --admin_port=12000 .
-  
-  Your server will then be available at ``localhost:12080``.
+.. code:: shell
 
-* Problem with a non-Chrome browser? Please 
-  `file an issue <https://github.com/googlegenomics/api-client-python/issues/new>`_.
-  jQuery and d3 get us a lot of browser portability for free - 
-  but testing on all configurations is tricky, so just let us know 
-  if there are issues!
+  python dev_appserver.py --port 12080 --admin_port=12000 .
+  
+Your server will then be available at ``localhost:12080``.
+
+* Problem with a non-Chrome browser?
+
+Please  `file an issue <https://github.com/googlegenomics/api-client-python/issues/new>`_.
+jQuery and d3 get us a lot of browser portability for free - 
+but testing on all configurations is tricky, so just let us knowif there are issues!
 
 Code layout
 -----------
 
 main.py:
-  queries the Genomics API and handles all OAuth flows. It also serves up the HTML
+  queries the Genomics API. It also serves up the HTML
   pages.
 
 main.html:
-  is the main HTML page. It is displayed once the user has granted OAuth access to
-  the Genomics API.
-  It provides the basic page layout, but most of the display logic is handled in
+  is the main HTML page. It provides the basic page layout, but most of the display logic is handled in
   JavaScript.
 
 static/js/main.js:
@@ -246,15 +246,15 @@ Project status
 --------------
 
 Goals
-~~~~~
+^^^^^
+
 * Provide an easily deployable demo that demonstrates what Genomics API interop
   can achieve for the community.
-* Provide an example of how to use the Genomics APIs and OAuth to build a
+* Provide an example of how to use the Genomics APIs to build a
   non-trivial python application.
 
-
 Current status
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 This code *wants* to be in active development, but has few contributions coming
 in at the moment.
 
