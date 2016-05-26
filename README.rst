@@ -91,16 +91,22 @@ This will install the `oauth2client <https://oauth2client.readthedocs.io/en/late
 On Mac OS X you can set up and run the application through the
 GoogleAppEngineLauncher UI. 
 To use the command line or to run on Linux:
+<<<<<<< 441d13dd91d1f0bd1fc978d9a61fd4137a601208
 
 .. code:: shell
+=======
+>>>>>>> README formatting fixes
 
 .. code:: shell
 
   dev_appserver.py .
   
 To run on Windows:
+<<<<<<< 441d13dd91d1f0bd1fc978d9a61fd4137a601208
 
 .. code:: shell
+=======
+>>>>>>> README formatting fixes
 
 .. code:: shell
 
@@ -129,7 +135,7 @@ to browse data from the API.
 Running with paste and webapp2
 ------------------------------
 
-You can also run the server locally using 
+You can also run the server locally using
 the Python `paste <https://en.wikipedia.org/wiki/Python_Paste>`_
 web server framework.
 
@@ -205,7 +211,7 @@ Your server will then be available at ``localhost:12080``.
 * Problem with a non-Chrome browser?
 
 Please  `file an issue <https://github.com/googlegenomics/api-client-python/issues/new>`_.
-jQuery and d3 get us a lot of browser portability for free - 
+jQuery and d3 get us a lot of browser portability for free -
 but testing on all configurations is tricky, so just let us knowif there are issues!
 
 Code layout
