@@ -38,13 +38,13 @@ Cloud Platform project.
 
 You will need your project ID if you deploy to App Engine.
 
-4. Follow instructions `here <https://cloud.google.com/sdk/docs/quickstarts>`_ to install and authorize to the Cloud SDK
+4. Follow instructions `here <https://cloud.google.com/sdk/docs/quickstarts>`_ to install and authorize the Cloud SDK
 
 The web application uses `Application Default Credentials <https://developers.google.com/identity/protocols/application-default-credentials>`_ to authorize
 requests to the Google Genomics API.
 
-When running the web application locally, it will use your Cloud SDK
-credentials.
+* When running the web application locally, it will use your Cloud SDK user credentials.
+* When running on App Engine, it will use the Cloud Project's App Engine `Service Account <https://cloud.google.com/iam/docs/service-accounts>`_.
 
 Running on App Engine
 ---------------------
