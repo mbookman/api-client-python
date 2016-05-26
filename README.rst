@@ -94,9 +94,13 @@ To use the command line or to run on Linux:
 
 .. code:: shell
 
+.. code:: shell
+
   dev_appserver.py .
   
 To run on Windows:
+
+.. code:: shell
 
 .. code:: shell
 
