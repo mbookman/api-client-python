@@ -23,7 +23,6 @@ It can also be run locally without App Engine
 using the Python `paste <https://en.wikipedia.org/wiki/Python_Paste>`_
 web application framework.
 
-
 Set up a Google Cloud project
 -----------------------------
 
@@ -31,15 +30,15 @@ If you will run this application under App Engine (local or remote)
 or you will access data in Google Genomics, you must set up a Google
 Cloud Platform project.
 
-#. Follow instructions `here <https://support.google.com/cloud/answer/6251787>`_ to create a new project
+1. Follow instructions `here <https://support.google.com/cloud/answer/6251787>`_ to create a new project
 
-#. Follow instructions `here <https://support.google.com/cloud/answer/6158841>`_ to enable the ``Genomics`` API 
+2. Follow instructions `here <https://support.google.com/cloud/answer/6158841>`_ to enable the ``Genomics`` API 
 
-#. Follow instructions `here <https://support.google.com/cloud/answer/6158840>`_ to find your Cloud "project ID"
+3. Follow instructions `here <https://support.google.com/cloud/answer/6158840>`_ to find your Cloud "project ID"
 
 You will need your project ID if you deploy to App Engine.
 
-#. Follow instructions `here <https://cloud.google.com/sdk/docs/quickstarts>`_ to install and authorize to the Cloud SDK
+4. Follow instructions `here <https://cloud.google.com/sdk/docs/quickstarts>`_ to install and authorize to the Cloud SDK
 
 The web application uses `Application Default Credentials <https://developers.google.com/identity/protocols/application-default-credentials>`_ to authorize
 requests to the Google Genomics API.
@@ -48,7 +47,7 @@ When running the web application locally, it will use your Cloud SDK
 credentials.
 
 Running on App Engine
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 `Google App Engine <https://cloud.google.com/appengine/docs/python/>`_
 provides an application framework for internet-based web applications.
@@ -78,6 +77,8 @@ at runtime. Documentation can be found
 
 For this application execute the following in the root of your local copy:
 
+.. code:: shell
+
   mkdir lib
   pip install -t lib --upgrade oauth2client
 
@@ -91,16 +92,20 @@ On Mac OS X you can set up and run the application through the
 GoogleAppEngineLauncher UI. 
 To use the command line or to run on Linux::
 
+.. code:: shell
+
   dev_appserver.py .
   
 To run on Windows::
+
+.. code:: shell
 
   python c:\path\to\dev_appserver.py .
 
 4. Open the application URL in your browser
 '''''''''''''''''''''''''''''''''''''''''''
 
-Once running, visit ``http://localhost:8080`` in your browser to browse
+Once running, visit http://localhost:8080 in your browser to browse
 data from the API.
 
 Running on the App Engine Production Server
@@ -108,11 +113,13 @@ Running on the App Engine Production Server
 
 To deploy this application to App Engine, execute the following command:
 
+.. code:: shell
+
   appcfg.py -A YOUR_PROJECT_ID -V v1 update .
 
 Replace ``YOUR_PROJECT_ID`` with the project of your Google Cloud Project.
 
-Once running, visit ``http://YOUR_PROJECT_ID.appspot.com`` in your browser
+Once running, visit http://YOUR_PROJECT_ID.appspot.com in your browser
 to browse data from the API.
 
 Running with paste and webapp2
@@ -130,46 +137,56 @@ in one place.
 The instructions here explicitly use a Python virtualenv and have only
 been tested in this environment.
 
-Install pip
-^^^^^^^^^^^
+1. Install pip
+^^^^^^^^^^^^^^
 If you do not already have `pip <https://en.wikipedia.org/wiki/Pip_(package_manager)>`_
 installed, you can find instructions 
 `here <http://www.pip-installer.org/en/latest/installing.html>`_.
 
-Install virtualenv
-^^^^^^^^^^^^^^^^^^
+2. Install virtualenv
+^^^^^^^^^^^^^^^^^^^^^
 If you have not installed ``virtualenv``, then do so with:
+
+.. code:: shell
 
   [sudo] pip install virtualenv
 
-Create a virtualenv
-^^^^^^^^^^^^^^^^^^^
+3. Create a virtualenv
+^^^^^^^^^^^^^^^^^^^^^^
 
 Create a virtualenv called localserver_libs:
 
+.. code:: shell
+
   virtualenv localserver_libs
 
-Activate the virtualenv
-^^^^^^^^^^^^^^^^^^^^^^^
+4. Activate the virtualenv
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code:: shell
 
   source localserver_libs/bin/activate
 
-Install localserver.py dependent libraries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+5. Install localserver.py dependent libraries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Install the required dependencies:
+
+.. code:: shell
 
   pip install WebOb Paste webapp2 jinja2
   pip install urllib3[secure] httplib2shim
   pip install --upgrade oauth2client
 
-Run the localserver.py file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+6. Run the localserver.py file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code:: shell
 
   python localserver.py
 
 Troubleshooting
-~~~~~~~~~~~~~~~
+---------------
   
 * The ``google.appengine.tools.devappserver2.wsgi_server.BindError: Unable to bind`` message 
   means that one of the default App Engine ports is unavailable. The default ports are 8080 and 8000. 
