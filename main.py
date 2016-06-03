@@ -302,11 +302,7 @@ class SetSearchHandler(BaseRequestHandler):
     # See: https://cloud.google.com/genomics/reference/rest/v1/variantsets
     #
     # Otherwise, to display the list of chromosomes in the UI, we have a
-<<<<<<< 4a6aa2d39f4b0f4af03443fe3ba4cffb634c8bf8
     # hard-coded list for GRCh38.
-=======
-    # hard-code list for GRCh38.
->>>>>>> Restores support for Ensembl.
 
     if 'referenceBounds' in variant_set:
       call_set['references'] = [{'name': b['referenceName'],
