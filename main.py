@@ -18,6 +18,12 @@ This file serves two main purposes
 - and it provides a simple set of apis to the javascript
 """
 
+# Google Genomics: 0.5.1
+# https://github.com/ga4gh/schemas/blob/v0.5.1/src/main/resources/avro/
+
+# Ensembl: 0.6.0
+# https://github.com/ga4gh/schemas/blob/v0.6.0a1/src/main/resources/avro/
+
 import json
 import logging
 import os
@@ -27,6 +33,8 @@ import time
 
 import jinja2
 import webapp2
+
+from references import GRCh38
 
 # Need to jump through a few small module import hoops to allow for running in
 # multiple environments:
@@ -55,10 +63,7 @@ except:
   import httplib2
 
 # Set constants for which GA4GH backends to include
-#
-# The Ensembl backend is disabled until this issue is resolved:
-#   https://github.com/googlegenomics/api-client-python/issues/11
-INCLUDE_BACKEND_ENSEMBL = False
+INCLUDE_BACKEND_ENSEMBL = True
 INCLUDE_BACKEND_GOOGLE = True
 
 if INCLUDE_BACKEND_GOOGLE:
@@ -73,15 +78,21 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     extensions=['jinja2.ext.autoescape'])
 
 
+# Supported data types
+SET_TYPE_CALLSET = 'CALLSET'
+SET_TYPE_READSET = 'READSET'
+
 # But that call is not in the GA4GH API yet
 SUPPORTED_BACKENDS = {}
 
 if INCLUDE_BACKEND_ENSEMBL:
   SUPPORTED_BACKENDS['Ensembl'] = {
       'name': 'Ensembl',
+      'ga4gh_api_version': '0.6.0',
       'http': httplib2.Http(timeout=60),
-      'url': 'http://193.62.52.232:8081/%s?%s',
-      'datasets': {'1000 genomes pilot 2': '2'}
+      'url': 'http://rest.ensembl.org/ga4gh/%s?%s',
+      'datasets': {'1000 Genomes phase3': '6e340c4d1e333c7a676b1710d2e3953c'},
+      'set_types' : [ SET_TYPE_CALLSET ],
   }
 
 if INCLUDE_BACKEND_GOOGLE:
@@ -101,6 +112,7 @@ if INCLUDE_BACKEND_GOOGLE:
 
   SUPPORTED_BACKENDS['GOOGLE'] = {
       'name': 'Google',
+      'ga4gh_api_version': '0.5.1',
       'http': init_google_http(),
       'url': 'https://genomics.googleapis.com/v1/%s?%s',
       'supportsPartialResponse': True,
@@ -108,7 +120,8 @@ if INCLUDE_BACKEND_GOOGLE:
                    'Platinum Genomes': '3049512673186936334',
                    'DREAM SMC Challenge': '337315832689',
                    'PGP': '383928317087',
-                   'Simons Foundation': '461916304629'}
+                   'Simons Foundation': '461916304629'},
+      'set_types' : [ SET_TYPE_READSET, SET_TYPE_CALLSET ],
   }
 
 
@@ -150,6 +163,12 @@ class BaseRequestHandler(webapp2.RequestHandler):
   def get_http(self):
     return SUPPORTED_BACKENDS[self.get_backend()]['http']
 
+  def get_ga4gh_api_version(self):
+    return SUPPORTED_BACKENDS[self.get_backend()]['ga4gh_api_version']
+
+  def get_set_types(self):
+    return SUPPORTED_BACKENDS[self.get_backend()]['set_types']
+
   def get_content(self, path, method='POST', body=None, params=''):
     uri = self.get_base_api_url() % (path, params)
     start_time = time.clock()
@@ -173,15 +192,20 @@ class BaseRequestHandler(webapp2.RequestHandler):
       raise ApiException('The API returned invalid JSON')
 
     if response.status >= 300:
+      logging.error('%s FAILED', uri)
       logging.error('error api response %s', response)
       logging.error('error api content %s', content)
       if 'error' in content:
-        raise ApiException(content['error']['message'])
+        if 'message' in content['error']:
+          raise ApiException(content['error']['message'])
+        else:
+          raise ApiException(content['error'])
       else:
         raise ApiException('Something went wrong with the API call!')
 
-    logging.info('get_content %s: %skb %ss',
-                 uri, len(content)/1024, time.clock() - start_time)
+    logging.info('get_content %s: %sb %ss',
+                 uri, len(content), time.clock() - start_time)
+
     return content
 
   def write_response(self, content):
@@ -195,17 +219,52 @@ class BaseRequestHandler(webapp2.RequestHandler):
 class SetSearchHandler(BaseRequestHandler):
 
   def write_read_group_sets(self, dataset_id, name):
+    if SET_TYPE_READSET not in self.get_set_types():
+      self.write_response({})
+      return
+
     self.write_content('readgroupsets/search',
                        body={'datasetIds': [dataset_id], 'name': name},
                        params='fields=readGroupSets(id,name)')
 
   def write_call_sets(self, dataset_id, name):
-    variant_sets = self.get_content('variantsets/search',
-                                    body={'datasetIds': [dataset_id]})
-    variant_set_id = variant_sets['variantSets'][0]['id']
-    self.write_content('callsets/search',
-                       body={'variantSetIds': [variant_set_id], 'name': name},
-                       params='fields=callSets(id,name)')
+    if SET_TYPE_CALLSET not in self.get_set_types():
+      self.write_response({})
+      return
+
+    ga4gh_api_version = self.get_ga4gh_api_version()
+
+    if ga4gh_api_version == '0.6.0':
+      # Single dataset ID as input
+      variant_sets = self.get_content('variantsets/search',
+                                      body={'datasetId': dataset_id})
+      variant_set_id = variant_sets['variantSets'][0]['id']
+
+    elif ga4gh_api_version == '0.5.1':
+      # Array of dataset IDs as input
+      variant_sets = self.get_content('variantsets/search',
+                                      body={'datasetIds': [dataset_id]})
+      variant_set_id = variant_sets['variantSets'][0]['id']
+
+    else:
+      raise ApiException('Unsupported GA4GH version: %s' % ga4gh_api_version)
+
+    if ga4gh_api_version == '0.6.0':
+      # Single variantset ID as input
+      self.write_content('callsets/search',
+                         body={'variantSetId': variant_set_id,
+                               'name': name,
+                               'pageSize': 100},
+                         params='fields=callSets(id,name)')
+    elif ga4gh_api_version == '0.5.1':
+      # Array of variantset IDs as input
+      self.write_content('callsets/search',
+                         body={'variantSetIds': [variant_set_id],
+                               'name': name},
+                         params='fields=callSets(id,name)')
+
+    else:
+      raise ApiException('Unsupported GA4GH version: %s' % ga4gh_api_version)
 
   def write_read_group_set(self, set_id):
     rg_set = self.get_content('readgroupsets/%s' % set_id, method='GET')
@@ -236,27 +295,42 @@ class SetSearchHandler(BaseRequestHandler):
     variant_set = self.get_content('variantsets/%s' % variant_set_id,
                                    method='GET')
 
-    call_set['references'] = [{'name': b['referenceName'],
-                               'length': b['upperBound']}
-                              for b in variant_set['referenceBounds']]
+    # Google Genomics implements a custom extension (referenceBounds)
+    # which provides the list of reference segments and the upper bounds
+    # for each.
+    #
+    # See: https://cloud.google.com/genomics/reference/rest/v1/variantsets
+    #
+    # Otherwise, to display the list of chromosomes in the UI, we have a
+    # hard-coded list for GRCh38.
+
+    if 'referenceBounds' in variant_set:
+      call_set['references'] = [{'name': b['referenceName'],
+                                 'length': b['upperBound']}
+                                for b in variant_set['referenceBounds']]
+    elif ('referenceSetId' in variant_set and
+          variant_set['referenceSetId'] == 'GRCh38'):
+      call_set['references'] = GRCh38['common_segments']
+
     self.response.write(json.dumps(call_set))
 
   def get(self):
-    use_callsets = self.request.get('setType') == 'CALLSET'
+    set_type = self.request.get('setType')
     set_id = self.request.get('setId')
 
     if set_id:
-      if use_callsets:
+      if set_type == SET_TYPE_CALLSET:
         self.write_call_set(set_id)
-      else:
+      elif set_type == SET_TYPE_READSET:
         self.write_read_group_set(set_id)
+
     else:
       dataset_id = self.request.get('datasetId')
       name = self.request.get('name')
 
-      if use_callsets:
+      if set_type == SET_TYPE_CALLSET:
         self.write_call_sets(dataset_id, name)
-      else:
+      elif set_type == SET_TYPE_READSET:
         self.write_read_group_sets(dataset_id, name)
 
 
@@ -297,6 +371,8 @@ class ReadSearchHandler(BaseRequestHandler):
 class VariantSearchHandler(BaseRequestHandler):
 
   def get(self):
+    ga4gh_api_version = self.get_ga4gh_api_version()
+
     body = {
         'callSetIds': self.request.get('setIds').split(','),
         'referenceName': self.request.get('sequenceName'),
@@ -304,6 +380,26 @@ class VariantSearchHandler(BaseRequestHandler):
         'end': int(self.request.get('sequenceEnd')),
         'pageSize': 100
     }
+
+    ga4gh_api_version = self.get_ga4gh_api_version()
+    if ga4gh_api_version == '0.6.0':
+      # variants/search in 0.6.0 does NOT require the variantSetId,
+      # but the Ensembl implementation does.
+      # The variantSetId isn't stored in the client (though it could be)
+      # and hence it is not passed in here.
+      
+      # For now, just look up the variantSetId for each callset
+      # (and make sure they all belong to the same one)
+      variant_set_ids = set()
+      for set_id in self.request.get('setIds').split(','):
+        call_set = self.get_content('callsets/%s' % set_id, method='GET')
+        variant_set_ids.add(call_set['variantSetIds'][0])
+
+      if len(variant_set_ids) != 1:
+        raise ApiException('callsets must all come from the same variantset')
+
+      body['variantSetId'] = variant_set_ids.pop()
+
     page_token = self.request.get('pageToken')
     if page_token:
       body['pageToken'] = page_token
